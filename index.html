@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cenários de análise de risco — SPDA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{
+  --paper:#EEF1F3; --surface:#FFFFFF; --sunk:#E3E8EC; --ink:#17202A; --muted:#566370;
+  --rule:#C8D0D7; --accent:#2E43A3; --accent-soft:#DDE2F6; --pass:#1B7445; --pass-soft:#DCEFE3;
+  --fail:#B0281F; --fail-soft:#F6DEDB; --warn:#9A5B00; --warn-soft:#F5E8D2; --info:#3D5568; --info-soft:#E1E8EE;
+  --zone:#F7E3E0;
+  color-scheme: light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#12161B; --surface:#1A2028; --sunk:#232B35; --ink:#E4E9EF; --muted:#9AA7B4;
+    --rule:#33404D; --accent:#93A3FF; --accent-soft:#273055; --pass:#5FCB8E; --pass-soft:#173526;
+    --fail:#FF8A80; --fail-soft:#40211F; --warn:#F0B35A; --warn-soft:#3A2C14; --info:#A9BCCB; --info-soft:#22303B;
+    --zone:#3A2220; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#12161B; --surface:#1A2028; --sunk:#232B35; --ink:#E4E9EF; --muted:#9AA7B4;
+  --rule:#33404D; --accent:#93A3FF; --accent-soft:#273055; --pass:#5FCB8E; --pass-soft:#173526;
+  --fail:#FF8A80; --fail-soft:#40211F; --warn:#F0B35A; --warn-soft:#3A2C14; --info:#A9BCCB; --info-soft:#22303B;
+  --zone:#3A2220; color-scheme: dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;font-weight:600;margin:0;line-height:1.2}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.top{display:flex;flex-wrap:wrap;gap:.25rem 1.5rem;align-items:baseline;padding:1rem 1.5rem .75rem;border-bottom:1px solid var(--rule);background:var(--surface)}
+.top h1{font-size:1.35rem}
+.top .meta{color:var(--muted);font-size:.9rem}
+.layout{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:calc(100% - 60px)}
+@media (max-width:860px){.layout{grid-template-columns:1fr}}
+aside{border-right:1px solid var(--rule);padding:1rem;background:var(--surface)}
+@media (max-width:860px){aside{border-right:0;border-bottom:1px solid var(--rule)}}
+aside h2{font-size:1rem;margin-bottom:.5rem}
+.cenlist{list-style:none;margin:0 0 .75rem;padding:0;display:flex;flex-direction:column;gap:2px}
+.cenlist button{width:100%;text-align:left;background:none;border:0;border-left:3px solid transparent;padding:.45rem .6rem;cursor:pointer;border-radius:0 4px 4px 0}
+.cenlist button:hover{background:var(--sunk)}
+.cenlist button[aria-current="true"]{background:var(--accent-soft);border-left-color:var(--accent)}
+.cenlist .nm{display:block;font-weight:500}
+.cenlist .sub{display:flex;gap:.5rem;font-size:.78rem;color:var(--muted)}
+.dot{display:inline-flex;align-items:center;gap:3px}
+.dot::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--fail)}
+.dot.ok::before{background:var(--pass)}
+.tag{display:inline-block;font-size:.72rem;padding:0 .4rem;border-radius:3px;background:var(--sunk);color:var(--muted);vertical-align:1px}
+.tag.builder{background:var(--info-soft);color:var(--info)}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.btnrow{display:flex;flex-wrap:wrap;gap:.4rem}
+.btn{border:1px solid var(--rule);background:var(--surface);padding:.35rem .7rem;border-radius:4px;cursor:pointer;font-size:.88rem}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.small{font-size:.8rem;color:var(--muted)}
+main{padding:1rem 1.5rem 3rem;min-width:0}
+.head{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;margin-bottom:.75rem}
+.head h2{font-size:1.25rem}
+.head input.nome{font-size:1.15rem;font-weight:600;border:1px solid transparent;background:transparent;padding:.1rem .3rem;border-radius:4px;min-width:12ch;width:min(100%,52ch)}
+.head input.nome:hover,.head input.nome:focus{border-color:var(--rule);background:var(--surface)}
+.banner{padding:.55rem .8rem;border-radius:4px;margin:.5rem 0 1rem;font-size:.9rem}
+.banner.info{background:var(--info-soft);color:var(--info)}
+.banner.warn{background:var(--warn-soft);color:var(--warn)}
+/* régua de risco */
+.reguas{display:grid;gap:.25rem;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:.75rem 1rem .5rem;margin-bottom:1rem}
+.regua{display:grid;grid-template-columns:7.5rem minmax(0,1fr);align-items:center;gap:.75rem}
+.regua .lbl b{display:block;font-family:"IBM Plex Sans Condensed",sans-serif;font-size:1.05rem}
+.regua .lbl span{font-size:.8rem;color:var(--muted)}
+.regua .val{font-size:.85rem}
+.regua .val.ok{color:var(--pass)} .regua .val.no{color:var(--fail)}
+.regua svg{width:100%;height:58px;display:block;overflow:visible}
+.regua svg text{fill:var(--muted);font-size:10px}
+.legend{font-size:.78rem;color:var(--muted);text-align:right}
+/* abas */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--rule);overflow-x:auto;margin-bottom:1rem}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:.5rem .8rem;cursor:pointer;white-space:nowrap;color:var(--muted)}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent);font-weight:500}
+.tabs .count{font-size:.75rem;background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:0 .4rem;margin-left:.3rem}
+section[role="tabpanel"][hidden]{display:none}
+/* formulário */
+fieldset{border:1px solid var(--rule);border-radius:6px;background:var(--surface);margin:0 0 1rem;padding:.25rem 1rem .75rem}
+legend{font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:600;padding:0 .35rem}
+.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) 5.5rem;gap:.5rem 1rem;align-items:center;padding:.4rem 0;border-bottom:1px solid var(--sunk)}
+.row:last-child{border-bottom:0}
+@media (max-width:640px){.row{grid-template-columns:1fr 5rem}.row label{grid-column:1/-1}}
+.row label{font-size:.9rem}
+.row label small{display:block;color:var(--muted);font-size:.78rem}
+.row .ctl{display:flex;gap:.4rem;min-width:0}
+.row select,.row input[type=number],.row input[type=text]{width:100%;min-width:0;padding:.3rem .4rem;border:1px solid var(--rule);border-radius:4px;background:var(--paper)}
+.row input.cust{max-width:7rem}
+.row select:disabled,.row input:disabled{opacity:.75}
+.row .v{text-align:right;font-size:.85rem;color:var(--muted)}
+.row.changed{background:linear-gradient(90deg,var(--accent-soft),transparent 60%)}
+.row.flag label::after{content:"";color:var(--warn);font-size:.78rem}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,560px),1fr));gap:0 1rem}
+/* tabelas */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--rule);border-radius:6px;background:var(--surface);margin-bottom:1rem}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{padding:.4rem .6rem;border-bottom:1px solid var(--sunk);text-align:left;vertical-align:top}
+th{font-weight:600;background:var(--sunk)}
+td.n,th.n{text-align:right;white-space:nowrap}
+#tab-cmp td:first-child,#tab-cmp th:first-child{min-width:11rem}
+#tab-cmp th.n{white-space:normal;min-width:8rem}
+tr.diff td{background:var(--accent-soft)}
+td.ok{color:var(--pass)} td.no{color:var(--fail)}
+.cur{font-weight:600}
+/* composição */
+.comp{display:grid;grid-template-columns:3rem minmax(0,1fr) 6.5rem;gap:.35rem .75rem;align-items:center;font-size:.88rem;margin-bottom:1rem}
+.comp .bar{height:14px;background:var(--sunk);border-radius:2px;overflow:hidden}
+.comp .bar i{display:block;height:100%;background:var(--accent)}
+.comp .bar i.dom{background:var(--fail)}
+.comp .hint{grid-column:2/-1;margin-top:-.25rem;font-size:.78rem;color:var(--muted)}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:.75rem 1rem;margin-bottom:1rem}
+.panel h3{font-size:1rem;margin-bottom:.5rem}
+/* verificações */
+.checks{list-style:none;margin:0;padding:0;display:grid;gap:.4rem}
+.checks li{padding:.5rem .75rem;border-radius:4px;border-left:4px solid}
+.checks .erro{background:var(--fail-soft);border-color:var(--fail)}
+.checks .alerta{background:var(--warn-soft);border-color:var(--warn)}
+.checks .info{background:var(--info-soft);border-color:var(--info)}
+.checks b{font-weight:600;margin-right:.35rem}
+/* memorial */
+.memform{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.6rem 1rem;margin-bottom:.75rem}
+.memform label{display:flex;flex-direction:column;font-size:.85rem;gap:.2rem}
+.memform input,.memform select,.memform textarea{padding:.35rem .45rem;border:1px solid var(--rule);border-radius:4px;background:var(--paper)}
+.memform .wide{grid-column:1/-1}
+.doc{background:#fff;color:#1a1a1a;max-width:820px;margin:1rem auto;padding:2.5rem 3rem;border:1px solid var(--rule);box-shadow:0 1px 0 var(--rule);font-size:14px;line-height:1.55}
+.doc h1{font-size:1.45rem;margin:0 0 .25rem;color:#1a1a1a}
+.doc h2{font-size:1.1rem;margin:1.5rem 0 .5rem;color:#1a1a1a;border-bottom:1px solid #bbb;padding-bottom:.2rem}
+.doc p{margin:.4rem 0;max-width:72ch}
+.doc table{font-size:12.5px;margin:.4rem 0 .8rem}
+.doc th,.doc td{border:1px solid #999;padding:.25rem .45rem}
+.doc th{background:#e9e9e9;color:#1a1a1a}
+.doc ul{margin:.3rem 0 .6rem 1.2rem;padding:0}
+.doc .assin{margin-top:3rem;text-align:center}
+.doc .assin div{border-top:1px solid #333;width:60%;margin:0 auto .3rem}
+.toast{position:fixed;left:50%;bottom:calc(1rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:.5rem 1rem;border-radius:4px;font-size:.9rem;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+@media print{
+  body{background:#fff}
+  .top,aside,.head,.reguas,.tabs,.memform,.noprint,section[role="tabpanel"]:not(#tab-memorial){display:none!important}
+  .layout{display:block} main{padding:0}
+  #tab-memorial{display:block!important}
+  .doc{border:0;box-shadow:none;margin:0;padding:0;max-width:none}
+}
+</style>
+</head>
+<body>
+<script id="dados" type="application/json">{"gerado_em": "2026-10-19 10:49", "tabelas": {"_fonte": "Valores das tabelas da ABNT NBR 5419-2:2015 conferidos contra os memoriais do Builder 2026 (Ng, Cd, Pb, Pta, Ptu, Peb, Pspd, rt, rp, rf, hz, Lf, Ci, Ct, Ce, Cld, Cli, Pld, Pli, Ks3, Ft). Itens marcados com conferir_2026 não apareceram nos memoriais testados: confirme na NBR 5419-2:2026 antes de usar em projeto.", "np": {"I": {"esfera_m": 20, "pb": 0.02, "peb": 0.01}, "II": {"esfera_m": 30, "pb": 0.05, "peb": 0.02}, "III": {"esfera_m": 45, "pb": 0.1, "peb": 0.05}, "IV": {"esfera_m": 60, "pb": 0.2, "peb": 0.05}}, "opcoes": {"cd": [{"id": "cercada_altos", "rotulo": "Estrutura cercada por objetos mais altos", "valor": 0.25}, {"id": "cercada_iguais", "rotulo": "Estrutura cercada por objetos da mesma altura ou mais baixos", "valor": 0.5}, {"id": "isolada", "rotulo": "Estrutura isolada, sem outros objetos nas vizinhanças", "valor": 1}, {"id": "isolada_topo", "rotulo": "Estrutura isolada no topo de uma colina ou monte", "valor": 2}], "pb": [{"id": "sem_spda", "rotulo": "Estrutura não protegida por SPDA", "valor": 1}, {"id": "spda", "rotulo": "Estrutura protegida por SPDA (valor pela classe do NP)", "por_np": "pb"}, {"id": "capt_np1", "rotulo": "Com subsistema de captação conforme SPDA NP I", "valor": 0.01, "conferir_2026": true}, {"id": "cob_metalica", "rotulo": "Com cobertura metálica e subsistema captação, proteção completa na cobertura", "valor": 0.001}], "pta": [{"id": "nenhuma", "rotulo": "Nenhuma medida de proteção", "valor": 1}, {"id": "avisos", "rotulo": "Avisos de alerta", "valor": 0.1, "conferir_2026": true}, {"id": "isolacao", "rotulo": "Isolação elétrica das partes expostas da descida", "valor": 0.01, "conferir_2026": true}, {"id": "equip_solo", "rotulo": "Equipotencialização efetiva do solo", "valor": 0.01, "conferir_2026": true}, {"id": "restricoes", "rotulo": "Restrições físicas fixas", "valor": 0}], "ptu": [{"id": "nenhuma", "rotulo": "Nenhuma medida de proteção", "valor": 1}, {"id": "avisos", "rotulo": "Avisos de alerta", "valor": 0.1, "conferir_2026": true}, {"id": "isolacao", "rotulo": "Isolação elétrica", "valor": 0.01, "conferir_2026": true}, {"id": "restricoes", "rotulo": "Restrições físicas fixas", "valor": 0, "conferir_2026": true}], "dps": [{"id": "nenhum", "rotulo": "Nenhum sistema de DPS", "valor": 1}, {"id": "np34", "rotulo": "DPS para NP III–IV", "valor": 0.05}, {"id": "np2", "rotulo": "DPS para NP II", "valor": 0.02}, {"id": "np1", "rotulo": "DPS para NP I", "valor": 0.01, "conferir_2026": true}, {"id": "melhor1", "rotulo": "DPS com características melhores que NP I (0,005)", "valor": 0.005, "conferir_2026": true}, {"id": "melhor2", "rotulo": "DPS com características melhores que NP I (0,001)", "valor": 0.001, "conferir_2026": true}], "rt": [{"id": "terra", "rotulo": "Terra, concreto", "valor": 0.01}, {"id": "marmore", "rotulo": "Mármore, cerâmica", "valor": 0.001, "conferir_2026": true}, {"id": "cascalho", "rotulo": "Cascalho, tapete, carpete", "valor": 0.0001, "conferir_2026": true}, {"id": "asfalto", "rotulo": "Asfalto, linóleo, madeira", "valor": 1e-05, "conferir_2026": true}], "rf": [{"id": "exp_0_20", "rotulo": "Risco explosão zonas 0, 20 e explosivos sólidos", "valor": 1, "explosao": true}, {"id": "exp_1_21", "rotulo": "Risco explosão zonas 1, 21", "valor": 0.1, "explosao": true, "conferir_2026": true}, {"id": "exp_2_22", "rotulo": "Risco explosão zonas 2, 22", "valor": 0.001, "explosao": true, "conferir_2026": true}, {"id": "inc_alto", "rotulo": "Risco de incêndio alto", "valor": 0.1, "conferir_2026": true}, {"id": "inc_normal", "rotulo": "Risco de incêndio normal", "valor": 0.01}, {"id": "inc_baixo", "rotulo": "Risco de incêndio baixo", "valor": 0.001, "conferir_2026": true}, {"id": "nenhum", "rotulo": "Nenhum risco de incêndio ou explosão", "valor": 0, "conferir_2026": true}], "rp": [{"id": "nenhuma", "rotulo": "Nenhuma providência ou qualquer parte da estrutura com risco de explosão", "valor": 1}, {"id": "manuais", "rotulo": "Extintores, hidrantes manuais, alarme manual, rotas de fuga", "valor": 0.5}, {"id": "automaticas", "rotulo": "Instalações automáticas de extinção ou alarme automático", "valor": 0.2, "conferir_2026": true}], "hz": [{"id": "sem", "rotulo": "Sem perigo especial", "valor": 1}, {"id": "panico_baixo", "rotulo": "Baixo nível de pânico (até 2 pavimentos e até 100 pessoas)", "valor": 2, "conferir_2026": true}, {"id": "panico_medio", "rotulo": "Nível médio de pânico (100 a 1000 pessoas)", "valor": 5, "conferir_2026": true}, {"id": "evacuacao", "rotulo": "Dificuldade de evacuação (pessoas imobilizadas, hospitais)", "valor": 5, "conferir_2026": true}, {"id": "panico_alto", "rotulo": "Alto nível de pânico (mais de 1000 pessoas)", "valor": 10, "conferir_2026": true}], "rs": [{"id": "robusta", "rotulo": "Robusta: estrutura metálica ou concreto armado", "valor": 1}], "lf": [{"id": "explosao", "rotulo": "Risco de explosão", "valor": 0.1, "explosao": true}, {"id": "hospital", "rotulo": "Hospital, hotel, escola, edifício cívico", "valor": 0.1, "conferir_2026": true}, {"id": "publico", "rotulo": "Entretenimento público, igreja, museu", "valor": 0.05, "conferir_2026": true}, {"id": "comercial", "rotulo": "Industrial, comercial", "valor": 0.02}, {"id": "outros", "rotulo": "Outros", "valor": 0.01, "conferir_2026": true}], "ft": [{"id": "critico", "rotulo": "Sistema crítico — falha pode afetar comunidade, causar perdas significativas ou danos irreversíveis", "valor": 0.1}, {"id": "nao_critico", "rotulo": "Sistema não crítico", "valor": 1}], "ci": [{"id": "aereo", "rotulo": "Aéreo", "valor": 1}, {"id": "enterrado", "rotulo": "Enterrado", "valor": 0.5, "conferir_2026": true}, {"id": "malha", "rotulo": "Cabos enterrados instalados completamente dentro de uma malha de aterramento", "valor": 0.01, "conferir_2026": true}], "ct": [{"id": "bt", "rotulo": "Linha de energia em BT, telecomunicação ou dados", "valor": 1}, {"id": "at", "rotulo": "Linha de energia em AT (com transformador AT/BT)", "valor": 0.2, "conferir_2026": true}], "ce": [{"id": "rural", "rotulo": "Rural", "valor": 1, "conferir_2026": true}, {"id": "suburbano", "rotulo": "Suburbano", "valor": 0.5, "conferir_2026": true}, {"id": "urbano", "rotulo": "Urbano", "valor": 0.1}, {"id": "urbano_alto", "rotulo": "Urbano com edificações acima de 20 m", "valor": 0.01, "conferir_2026": true}], "linha_cld": [{"id": "aerea_nb", "rotulo": "Linha aérea não blindada", "cld": 1, "cli": 1}, {"id": "enterrada_nb", "rotulo": "Linha enterrada não blindada", "cld": 1, "cli": 1, "conferir_2026": true}, {"id": "neutro_multi", "rotulo": "Linha de energia com neutro multiaterrado", "cld": 1, "cli": 0.2, "conferir_2026": true}, {"id": "enterrada_b_nbep", "rotulo": "Linha enterrada blindada, blindagem não interligada ao BEP do equipamento", "cld": 1, "cli": 0.3, "conferir_2026": true}, {"id": "aerea_b_nbep", "rotulo": "Linha aérea blindada, blindagem não interligada ao BEP do equipamento", "cld": 1, "cli": 0.1, "conferir_2026": true}, {"id": "b_bep", "rotulo": "Linha blindada (aérea ou enterrada) com blindagem interligada ao mesmo BEP do equipamento", "cld": 1, "cli": 0, "conferir_2026": true}, {"id": "protegida", "rotulo": "Cabo protegido contra descargas ou em eletroduto/duto metálico aterrado", "cld": 0, "cli": 0, "conferir_2026": true}, {"id": "sem_linha", "rotulo": "Nenhuma linha externa / interfaces isolantes", "cld": 0, "cli": 0, "conferir_2026": true}], "pld": [{"id": "nb", "rotulo": "Linha aérea ou subterrânea não blindada ou não interligada ao mesmo BEP", "valor": 1}], "ks3": [{"id": "nb_sem", "rotulo": "Cabo não blindado - sem preocupação no roteamento para evitar laços", "valor": 1}, {"id": "nb_grandes", "rotulo": "Cabo não blindado - roteamento evitando grandes laços", "valor": 0.5}, {"id": "nb_laços", "rotulo": "Cabo não blindado - roteamento evitando laços", "valor": 0.01, "conferir_2026": true}, {"id": "blindado", "rotulo": "Cabos blindados ou em eletrodutos metálicos interligados ao BEP nas duas extremidades", "valor": 0.0001, "conferir_2026": true}], "uw": [{"id": "1", "rotulo": "1 kV", "valor": 1}, {"id": "1.5", "rotulo": "1,5 kV", "valor": 1.5}, {"id": "2.5", "rotulo": "2,5 kV", "valor": 2.5}, {"id": "4", "rotulo": "4 kV", "valor": 4}, {"id": "6", "rotulo": "6 kV", "valor": 6}]}, "pli_por_uw": {"_conferir_2026": false, "E": {"1": 1, "1.5": 0.6, "2.5": 0.3, "4": 0.16, "6": 0.1}, "T": {"1": 1, "1.5": 0.5, "2.5": 0.2, "4": 0.08, "6": 0.04}, "_nota": "1 kV e 2,5 kV confirmados em memoriais do Builder 2026 (E: 1 / 0,3; T: 1 / 0,2); demais da tabela de 2015."}, "toleraveis": {"R1": 1e-05, "R3": 0.0001}, "_confirmados_builder_2026": ["pb: Estrutura protegida por SPDA (NP IV = 0,2)", "rp: extintores/hidrantes manuais = 0,5", "rf: incêndio normal = 0,01", "lf: industrial/comercial = 0,02", "ft: não crítico = 1", "pb/peb/pspd NP II = 0,05/0,02/0,02", "ks3: roteamento evitando grandes laços = 0,5 (2015: 0,2)", "pspd: 'Com sistema de DPS coordenado' = valor do NP do SPDA", "pli 2,5 kV: energia 0,3, telecom 0,2; ks4 = 1/U_W", "ks3: roteamento evitando grandes laços = 0,5 (confirmado de novo no C7)"]}, "contexto": {"projeto": {"nome": "Projeto MEP Elétrico Fotovoltaico_7", "empreendimento": "Edificação Comercial", "municipio": "Florianópolis", "uf": "SC", "categoria": "Lojas e Varejo", "tipo": "Comercial", "software": "AltoQi Builder 2026 Infinity", "sub_redes_spda": ["Portaria", "Fábrica"], "cliente": "Projeto de demonstração"}, "eletrico": {"lido_em": "16/10/2026 20:10", "esquema": "3F+N 380/220 V", "quadros": [{"nome": "QM1", "tipo": "Quadro de medição", "pavimento": "Térreo", "alimentador": "AL1", "linha": "energia", "papel": "entrada", "dps_peca": "Nenhuma", "dps_qtd": 0, "lido_em": "16/10/2026 10:15"}, {"nome": "DG1", "tipo": "Quadro de distribuição", "pavimento": "Térreo", "alimentador": "QM1", "linha": "energia", "papel": "entrada", "dps_peca": "275 V - 60 kA - classe I", "dps_grupo": "Dispositivo de proteção contra surto - classe I", "dps_qtd": 4, "protege_neutro": true, "desconexao": true, "desconexao_peca": "80 A - 10 kA (380 V/220 V)", "icc_presumida_ka": 8.8, "ficha": {"modelo": "CLAMPER Front Monopolar Classe I+II 275V 12,5/60kA (ref. 016698)", "uc_v": 275, "iimp_ka": 12.5, "imax_ka": 60, "up_kv": 1.5, "fonte": "https://www.lojaclamper.com.br/dps-clamper-front-monopolar-275v-12-5-60ka-classe-i-ii---protetor-contra-surtos-para-quadros-eletricos/p (U_p não informado na página) ; U_p = 1,5 kV informado pelo projetista"}}, {"nome": "CD1", "tipo": "Quadro de distribuição", "pavimento": "Térreo", "alimentador": "DG1", "linha": "energia", "papel": "distribuicao", "dps_peca": "275 V - 40 kA - classe II", "dps_grupo": "Dispositivo de proteção contra surto - classe II", "dps_qtd": 4, "protege_neutro": true, "desconexao": true, "dist_montante_m": 40.3, "desconexao_peca": "20 A  - 10 kA - C", "icc_presumida_ka": 4.1, "ficha": {"uc_v": 275, "imax_ka": 40, "in_ka": "8 a 20", "up_kv": 1.5, "iimp_ka": null, "fonte": "Ficha genérica; U_p = 1,5 kV informado pelo projetista"}}, {"nome": "QD1", "tipo": "Quadro de distribuição", "pavimento": "Térreo", "alimentador": "CD1", "linha": "energia", "papel": "distribuicao", "dps_peca": "275 V - 40 kA - classe II", "dps_grupo": "Dispositivo de proteção contra surto - classe II", "dps_qtd": 4, "protege_neutro": true, "desconexao": true, "desconexao_peca": "20 A  - 10 kA - C", "icc_presumida_ka": 1.3, "ficha": {"uc_v": 275, "imax_ka": 40, "in_ka": "8 a 20", "up_kv": 1.5, "iimp_ka": null, "fonte": "Ficha genérica; U_p = 1,5 kV informado pelo projetista"}}, {"nome": "QT1", "tipo": "Quadro transformador (central SADI Intelbras CIE1125, 24 Vcc)", "pavimento": "Térreo", "alimentador": "CD1", "linha": "energia", "papel": "distribuicao", "sensivel": true, "dps_peca": "275 V - 40 kA - classe II", "dps_qtd": 2, "protege_neutro": true, "desconexao": true, "desconexao_peca": "20 A  - 10 kA - C", "icc_presumida_ka": 1.1, "ficha": {"uc_v": 275, "imax_ka": 40, "in_ka": "8 a 20", "up_kv": 1.5, "iimp_ka": null, "fonte": "Ficha genérica; U_p = 1,5 kV informado pelo projetista"}}, {"nome": "CD2", "tipo": "Quadro de distribuição", "pavimento": "Superior", "alimentador": "CD1", "linha": "energia", "papel": "distribuicao", "dps_peca": "275 V - 40 kA - classe II", "dps_qtd": 4, "protege_neutro": true, "desconexao": true, "desconexao_peca": "20 A  - 10 kA - C", "icc_presumida_ka": 4.1, "ficha": {"uc_v": 275, "imax_ka": 40, "in_ka": "8 a 20", "up_kv": 1.5, "iimp_ka": null, "fonte": "Ficha genérica; U_p = 1,5 kV informado pelo projetista"}}, {"nome": "QD2", "tipo": "Quadro de distribuição", "pavimento": "Superior", "alimentador": "CD2", "linha": "energia", "papel": "distribuicao", "dps_peca": "275 V - 40 kA - classe II", "dps_qtd": 4, "protege_neutro": true, "desconexao": true, "desconexao_peca": "20 A  - 10 kA - C", "icc_presumida_ka": 2.7, "ficha": {"uc_v": 275, "imax_ka": 40, "in_ka": "8 a 20", "up_kv": 1.5, "iimp_ka": null, "fonte": "Ficha genérica; U_p = 1,5 kV informado pelo projetista"}}, {"nome": "QD3", "tipo": "Quadro de distribuição", "pavimento": "Superior", "alimentador": "CD2", "linha": "energia", "papel": "distribuicao", "dps_peca": "275 V - 40 kA - classe II", "dps_qtd": 4, "protege_neutro": true, "desconexao": true, "desconexao_peca": "20 A  - 10 kA - C", "icc_presumida_ka": 0.8, "ficha": {"uc_v": 275, "imax_ka": 40, "in_ka": "8 a 20", "up_kv": 1.5, "iimp_ka": null, "fonte": "Ficha genérica; U_p = 1,5 kV informado pelo projetista"}}, {"nome": "INV1", "tipo": "Inversor FV 20 kW (lado CA)", "pavimento": "Cobertura", "alimentador": "CD2", "linha": "energia", "papel": "fv", "dps_peca": null, "obs": "Builder não tem campo de DPS para inversor; conferir DPS CA/CC integrados na ficha do inversor."}, {"nome": "CJ1", "tipo": "Caixa de junção FV (CC)", "pavimento": "Cobertura", "alimentador": "INV1", "linha": "energia", "papel": "fv", "dps_peca": "600 Vcc - 40 KA", "dps_qtd": 2, "obs": "1 string (proteção de string dispensável). Negativo aterrado: conferir compatibilidade com o inversor.", "desconexao": true, "desconexao_peca": "Fusível CC 20 A - 33 kA (1000 Vcc)", "voc_v": 466.2}, {"nome": "QTA1", "tipo": "Quadro de transferência (GER1)", "pavimento": "Térreo", "alimentador": "GER1", "linha": "energia", "papel": "outro", "dps_peca": "275 V - 40 kA - classe II", "dps_qtd": 4, "obs": "Sem quadro a jusante no modelo; conferir a ligação com DG1/CD1.", "protege_neutro": true, "desconexao": true, "desconexao_peca": "20 A  - 10 kA - C", "icc_presumida_ka": null, "ficha": {"uc_v": 275, "imax_ka": 40, "in_ka": "8 a 20", "up_kv": 1.5, "iimp_ka": null, "fonte": "Ficha genérica; U_p = 1,5 kV informado pelo projetista"}}, {"nome": "CD2 (rack)", "tipo": "Rack — distribuidor de campus", "pavimento": "Térreo", "alimentador": null, "linha": "telecom", "papel": "distribuicao", "dps_peca": null, "obs": "Racks não têm campo de DPS no Builder."}, {"nome": "BD1, FD1, FD2, FD3", "tipo": "Racks — distribuidores de edifício e de piso", "pavimento": "Térreo/Superior", "alimentador": "CD2 (rack)", "linha": "telecom", "papel": "distribuicao", "dps_peca": null, "obs": "Não lidos individualmente; sem campo de DPS."}], "nao_lidos": [], "telecom": {"existe": true, "aceito": true, "obs": "Linha de telecomunicações externa considerada existente (premissa do cliente). Entrada da operadora não modelada no Builder; DPS de sinal especificados no memorial."}}, "decisoes": {"classe_iii": {"prevista": false, "sugestao": true, "texto": "DPS classe III não previstos neste projeto (decisão do projetista). Recomenda-se sua instalação junto aos equipamentos sensíveis caso ocorra falha por surto."}}}, "cenarios": [{"arquivo": "memorial de cálculo — C1 - Sem proteção", "data": "16/10/2026", "hora": "08:40:13", "norma": "NBR 5419:2026", "dimensoes": {"altura": 11.0, "largura": 16.07, "comprimento": 26.28}, "np": "IV", "esfera_m": 60.0, "zonas": ["C1 - Sem proteção"], "nome": "C1 - Sem proteção", "params": {"ng": 18.0, "ad": 4266.18, "cd": 0.25, "pta": 0.0, "pb": 1.0, "rt": 0.01, "lt": 0.01, "nz": 160.0, "nt": 160.0, "tz": 8760.0, "rs": 1.0, "rp": 0.5, "rf": 0.01, "hz": 1.0, "lf": 0.02, "ptu": 1.0, "peb": 1.0, "lf3": 0.1, "cz": 0.0, "ct_valor": 1000000.0, "am": 816885.59, "linhas": {"E": {"existe": true, "ll": 1000.0, "ci": 1.0, "ct": 1.0, "ce": 0.1, "adj": 0.0, "cdj": 0.25, "pld": 1.0, "cld": 1.0, "pspd": 1.0, "ks1": 1.0, "ks2": 1.0, "ks3": 1.0, "uw": 1.0, "pli": 1.0, "cli": 1.0}, "T": {"existe": true, "ll": 1000.0, "ci": 1.0, "ct": 1.0, "ce": 0.1, "adj": 0.0, "cdj": 0.25, "pld": 1.0, "cld": 1.0, "pspd": 1.0, "ks1": 1.0, "ks2": 1.0, "ks3": 1.0, "uw": 1.0, "pli": 1.0, "cli": 1.0}}, "ft": 1.0}, "builder": {"R1": 3.07e-05, "R3": 0.0, "F": 29.4309, "componentes": {"Ra": 0.0, "Rb": 1.92e-06, "Ru": 1.4400000000000001e-05, "Rv": 1.4400000000000001e-05, "Rb3": 0.0, "Rv3": 0.0, "Fb": 0.0192, "Fc": 0.0192, "Fm": 14.7, "Fv": 0.144, "Fw": 0.144, "Fz": 14.4}}}, {"arquivo": "memorial de cálculo — C2 - SPDA existente", "data": "16/10/2026", "hora": "08:41:45", "norma": "NBR 5419:2026", "dimensoes": {"altura": 11.0, "largura": 16.07, "comprimento": 26.28}, "np": "IV", "esfera_m": 60.0, "zonas": ["C2 - SPDA existente"], "nome": "C2 - SPDA existente", "params": {"ng": 18.0, "ad": 4266.18, "cd": 0.25, "pta": 0.0, "pb": 0.2, "rt": 0.01, "lt": 0.01, "nz": 160.0, "nt": 160.0, "tz": 8760.0, "rs": 1.0, "rp": 0.5, "rf": 0.01, "hz": 1.0, "lf": 0.02, "ptu": 1.0, "peb": 1.0, "lf3": 0.1, "cz": 0.0, "ct_valor": 1000000.0, "am": 816885.59, "linhas": {"E": {"existe": true, "ll": 1000.0, "ci": 1.0, "ct": 1.0, "ce": 0.1, "adj": 0.0, "cdj": 0.25, "pld": 1.0, "cld": 1.0, "pspd": 1.0, "ks1": 1.0, "ks2": 1.0, "ks3": 1.0, "uw": 1.0, "pli": 1.0, "cli": 1.0}, "T": {"existe": true, "ll": 1000.0, "ci": 1.0, "ct": 1.0, "ce": 0.1, "adj": 0.0, "cdj": 0.25, "pld": 1.0, "cld": 1.0, "pspd": 1.0, "ks1": 1.0, "ks2": 1.0, "ks3": 1.0, "uw": 1.0, "pli": 1.0, "cli": 1.0}}, "ft": 1.0}, "builder": {"R1": 2.92e-05, "R3": 0.0, "F": 29.4155, "componentes": {"Ra": 0.0, "Rb": 3.8399999999999994e-07, "Ru": 1.4400000000000001e-05, "Rv": 1.4400000000000001e-05, "Rb3": 0.0, "Rv3": 0.0, "Fb": 0.00384, "Fc": 0.0192, "Fm": 14.7, "Fv": 0.144, "Fw": 0.144, "Fz": 14.4}}}, {"arquivo": "memorial de cálculo — C3 - SPDA existente + DPS classe I", "data": "16/10/2026", "hora": "08:50:08", "norma": "NBR 5419:2026", "dimensoes": {"altura": 11.0, "largura": 16.07, "comprimento": 26.28}, "np": "IV", "esfera_m": 60.0, "zonas": ["C3 - SPDA existente + DPS classe I"], "nome": "C3 - SPDA existente + DPS classe I", "params": {"ng": 18.0, "ad": 4266.18, "cd": 0.25, "pta": 0.0, "pb": 0.2, "rt": 0.01, "lt": 0.01, "nz": 160.0, "nt": 160.0, "tz": 8760.0, "rs": 1.0, "rp": 0.5, "rf": 0.01, "hz": 1.0, "lf": 0.02, "ptu": 1.0, "peb": 0.05, "lf3": 0.1, "cz": 0.0, "ct_valor": 1000000.0, "am": 816885.59, "linhas": {"E": {"existe": true, "ll": 1000.0, "ci": 1.0, "ct": 1.0, "ce": 0.1, "adj": 0.0, "cdj": 0.25, "pld": 1.0, "cld": 1.0, "pspd": 1.0, "ks1": 1.0, "ks2": 1.0, "ks3": 1.0, "uw": 1.0, "pli": 1.0, "cli": 1.0}, "T": {"existe": true, "ll": 1000.0, "ci": 1.0, "ct": 1.0, "ce": 0.1, "adj": 0.0, "cdj": 0.25, "pld": 1.0, "cld": 1.0, "pspd": 1.0, "ks1": 1.0, "ks2": 1.0, "ks3": 1.0, "uw": 1.0, "pli": 1.0, "cli": 1.0}}, "ft": 1.0}, "builder": {"R1": 1.8240000000000002e-06, "R3": 0.0, "F": 29.2787, "componentes": {"Ra": 0.0, "Rb": 3.8399999999999994e-07, "Ru": 7.2e-07, "Rv": 7.2e-07, "Rb3": 0.0, "Rv3": 0.0, "Fb": 0.00384, "Fc": 0.0192, "Fm": 14.7, "Fv": 0.007200000000000001, "Fw": 0.144, "Fz": 14.4}}}, {"arquivo": "memorial de cálculo — C4 - MPS NP III-IV", "data": "16/10/2026", "hora": "08:56:34", "norma": "NBR 5419:2026", "dimensoes": {"altura": 11.0, "largura": 16.07, "comprimento": 26.28}, "np": "IV", "esfera_m": 60.0, "zonas": ["C4 - MPS NP III-IV"], "nome": "C4 - MPS NP III-IV", "params": {"ng": 18.0, "ad": 4266.18, "cd": 0.25, "pta": 0.0, "pb": 0.2, "rt": 0.01, "lt": 0.01, "nz": 160.0, "nt": 160.0, "tz": 8760.0, "rs": 1.0, "rp": 0.5, "rf": 0.01, "hz": 1.0, "lf": 0.02, "ptu": 1.0, "peb": 0.05, "lf3": 0.1, "cz": 0.0, "ct_valor": 1000000.0, "am": 816885.59, "linhas": {"E": {"existe": true, "ll": 1000.0, "ci": 1.0, "ct": 1.0, "ce": 0.1, "adj": 0.0, "cdj": 0.25, "pld": 1.0, "cld": 1.0, "pspd": 0.05, "ks1": 1.0, "ks2": 1.0, "ks3": 1.0, "uw": 1.0, "pli": 1.0, "cli": 1.0}, "T": {"existe": true, "ll": 1000.0, "ci": 1.0, "ct": 1.0, "ce": 0.1, "adj": 0.0, "cdj": 0.25, "pld": 1.0, "cld": 1.0, "pspd": 0.05, "ks1": 1.0, "ks2": 1.0, "ks3": 1.0, "uw": 1.0, "pli": 1.0, "cli": 1.0}}, "ft": 1.0}, "builder": {"R1": 1.8240000000000002e-06, "R3": 0.0, "F": 2.1738, "componentes": {"Ra": 0.0, "Rb": 3.8399999999999994e-07, "Ru": 7.2e-07, "Rv": 7.2e-07, "Rb3": 0.0, "Rv3": 0.0, "Fb": 0.00384, "Fc": 0.0018700000000000001, "Fm": 1.43, "Fv": 0.007200000000000001, "Fw": 0.007200000000000001, "Fz": 0.7200000000000001}}}, {"arquivo": "memorial de cálculo — C7 - C4 + U_W 2,5 kV", "data": "19/10/2026", "hora": "07:37:17", "norma": "NBR 5419:2026", "dimensoes": {"altura": 11.0, "largura": 16.07, "comprimento": 26.28}, "np": "IV", "esfera_m": 60.0, "zonas": ["C7 - C4 + U_W 2,5 kV"], "nome": "C7 - C4 + U_W 2,5 kV", "params": {"ng": 18.0, "ad": 4266.18, "cd": 0.25, "pta": 0.0, "pb": 0.2, "rt": 0.01, "lt": 0.01, "nz": 160.0, "nt": 160.0, "tz": 8760.0, "rs": 1.0, "rp": 0.5, "rf": 0.01, "hz": 1.0, "lf": 0.02, "ptu": 1.0, "peb": 0.05, "lf3": 0.1, "cz": 0.0, "ct_valor": 1000000.0, "am": 816885.59, "linhas": {"E": {"existe": true, "ll": 1000.0, "ci": 1.0, "ct": 1.0, "ce": 0.1, "adj": 0.0, "cdj": 0.25, "pld": 1.0, "cld": 1.0, "pspd": 0.05, "ks1": 1.0, "ks2": 1.0, "ks3": 1.0, "uw": 2.5, "pli": 0.3, "cli": 1.0}, "T": {"existe": true, "ll": 1000.0, "ci": 1.0, "ct": 1.0, "ce": 0.1, "adj": 0.0, "cdj": 0.25, "pld": 1.0, "cld": 1.0, "pspd": 0.05, "ks1": 1.0, "ks2": 1.0, "ks3": 1.0, "uw": 2.5, "pli": 0.2, "cli": 1.0}}, "ft": 1.0}, "builder": {"R1": 1.8240000000000002e-06, "R3": 0.0, "F": 0.4344, "componentes": {"Ra": 0.0, "Rb": 3.8399999999999994e-07, "Ru": 7.2e-07, "Rv": 7.2e-07, "Rb3": 0.0, "Rv3": 0.0, "Fb": 0.00384, "Fc": 0.0018700000000000001, "Fm": 0.23399999999999999, "Fv": 0.007200000000000001, "Fw": 0.007200000000000001, "Fz": 0.18000000000000002}}}], "adotado": "C7 - C4 + U_W 2,5 kV", "publico": true}</script>
+
+<header class="top">
+  <h1 id="tit">Cenários de análise de risco</h1>
+  <span class="meta" id="meta"></span>
+</header>
+
+<div class="layout">
+  <aside>
+    <h2>Cenários</h2>
+    <ul class="cenlist" id="cenlist"></ul>
+    <div class="btnrow">
+      <button class="btn" id="b-dup">Duplicar</button>
+      <button class="btn" id="b-del">Excluir</button>
+    </div>
+    <p class="small" style="margin:.9rem 0 .4rem">Os cenários do Builder ficam travados. Duplique um deles para simular alterações.</p>
+    <div class="btnrow">
+      <button class="btn" id="b-exp">Exportar cenários (.json)</button>
+      <label class="btn" for="f-imp" style="display:inline-block">Importar .json</label>
+      <input type="file" id="f-imp" accept=".json,application/json" hidden>
+    </div>
+  </aside>
+
+  <main>
+    <div class="head">
+      <input class="nome" id="nome" aria-label="Nome do cenário">
+      <span id="origem"></span>
+    </div>
+    <div id="banners"></div>
+    <div class="banner info" id="demo" hidden></div>
+
+    <div class="reguas" id="reguas" aria-live="polite"></div>
+
+    <div class="tabs" role="tablist" id="tabs">
+      <button role="tab" aria-selected="true" aria-controls="tab-param" id="t-param">Parâmetros</button>
+      <button role="tab" aria-selected="false" aria-controls="tab-comp" id="t-comp">Composição do risco</button>
+      <button role="tab" aria-selected="false" aria-controls="tab-cmp" id="t-cmp">Comparativo</button>
+      <button role="tab" aria-selected="false" aria-controls="tab-ver" id="t-ver">Verificações<span class="count" id="nver"></span></button>
+      <button role="tab" aria-selected="false" aria-controls="tab-ele" id="t-ele">Instalação elétrica</button>
+      <button role="tab" aria-selected="false" aria-controls="tab-memorial" id="t-mem">Memorial descritivo</button>
+    </div>
+
+    <section role="tabpanel" id="tab-param"></section>
+    <section role="tabpanel" id="tab-comp" hidden></section>
+    <section role="tabpanel" id="tab-cmp" hidden></section>
+    <section role="tabpanel" id="tab-ver" hidden></section>
+    <section role="tabpanel" id="tab-ele" hidden></section>
+    <section role="tabpanel" id="tab-memorial" hidden>
+      <div class="memform noprint" id="memform"></div>
+      <div class="btnrow noprint">
+        <button class="btn primary" id="b-print">Imprimir</button>
+        <button class="btn" id="b-docx">Baixar Word (.docx)</button>
+        <button class="btn" id="b-html">Baixar HTML</button>
+      </div>
+      <article class="doc" id="doc"></article>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+"use strict";
+const D = JSON.parse(document.getElementById("dados").textContent);
+const PUB = !!D.publico; // versão pública: sem notas sobre limitações do software nem dados pessoais
+const TAB = D.tabelas, OP = TAB.opcoes, CTX = D.contexto || {}, PROJ = CTX.projeto || {};
+const RT1 = TAB.toleraveis.R1, RT3 = TAB.toleraveis.R3;
+const LS_KEY = "spda-cenarios:" + (PROJ.nome || "projeto") + ":" + (D.gerado_em || "");
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- formatação ---------- */
+const SUP = {"-":"⁻","0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹"};
+function fmt(v, sig = 3) {
+  if (v === null || v === undefined || Number.isNaN(v)) return "—";
+  if (v === 0) return "0";
+  const a = Math.abs(v);
+  if (a >= 0.01 && a < 1e5) return v.toLocaleString("pt-BR", {maximumSignificantDigits: Math.max(sig, 4)});
+  const e = Math.floor(Math.log10(a)), m = v / 10 ** e;
+  return m.toLocaleString("pt-BR", {maximumSignificantDigits: sig}) + " × 10" + String(e).split("").map(c => SUP[c]).join("");
+}
+const fmtPlain = (v) => v === 0 ? "0" : (Math.abs(v) >= 0.01 && Math.abs(v) < 1e5 ? v.toLocaleString("pt-BR",{maximumSignificantDigits:4}) : v.toExponential(2).replace(".", ",").replace("e", "E"));
+
+/* ---------- opções ---------- */
+const GR = { // parâmetro -> grupo de opções
+  cd:"cd", pb:"pb", pta:"pta", ptu:"ptu", rt:"rt", rf:"rf", rp:"rp", hz:"hz", rs:"rs", lf:"lf", ft:"ft"
+};
+const GRL = { pspd:"dps", ci:"ci", ct:"ct", ce:"ce", linha:"linha_cld", pld:"pld", ks3:"ks3", uw:"uw", cdj:"cd" };
+const opt = (g, id) => OP[g].find(o => o.id === id);
+function valorOp(g, sel, np) {
+  if (typeof sel === "string" && sel.startsWith("custom:")) return parseFloat(sel.slice(7));
+  const o = opt(g, sel);
+  if (!o) return NaN;
+  if (o.por_np) return TAB.np[np][o.por_np];
+  return o.valor;
+}
+function selDeValor(g, v, np) {
+  for (const o of OP[g]) {
+    if (o.por_np) { if (np && Math.abs(TAB.np[np][o.por_np] - v) < 1e-12) return o.id; continue; }
+    if (o.valor !== undefined && Math.abs(o.valor - v) < 1e-12) return o.id;
+  }
+  return "custom:" + v;
+}
+function selLinhaDe(cld, cli) {
+  const o = OP.linha_cld.find(o => o.cld === cld && o.cli === cli);
+  return o ? o.id : "custom:" + cld + "|" + cli;
+}
+
+/* ---------- cenário: estado <-> parâmetros numéricos ---------- */
+function deParams(c) {               // cenário lido do memorial (numérico) -> estado editável
+  const p = c.params, np = c.np || "IV";
+  const s = {np, explosao:"nao", sel:{}, num:{}, linhas:{}, dps:{}};
+  for (const k in GR) s.sel[k] = selDeValor(GR[k], p[k], np);
+  // P_B por NP só quando o valor coincide com a classe; senão a opção fixa
+  if (s.sel.pb === "spda" && OP.pb.some(o => o.valor === p.pb)) s.sel.pb = OP.pb.find(o => o.valor === p.pb).id;
+  for (const k of ["ng","ad","am","nz","nt","tz","lt","lf3","cz","ct_valor"]) s.num[k] = p[k];
+  s.dps.entrada = p.peb >= 1 ? "sem" : "com";
+  s.dps.np = p.peb >= 1 ? "acoplado" : (Math.abs(p.peb - TAB.np[np].peb) < 1e-12 ? "acoplado" : selDeValor("dps", p.peb));
+  for (const L of ["E","T"]) {
+    const l = p.linhas[L], sl = {existe: l.existe !== false, sel:{}, num:{}};
+    for (const k of ["pspd","ci","ct","ce","pld","ks3","uw","cdj"]) sl.sel[k] = selDeValor(GRL[k], l[k]);
+    sl.sel.linha = selLinhaDe(l.cld, l.cli);
+    for (const k of ["ll","ks1","ks2","adj"]) sl.num[k] = l[k];
+    const pliAuto = TAB.pli_por_uw[L][String(l.uw)];
+    sl.pli = (pliAuto !== undefined && Math.abs(pliAuto - l.pli) < 1e-12) ? "auto" : "custom:" + l.pli;
+    s.linhas[L] = sl;
+  }
+  return s;
+}
+function paraParams(s) {             // estado editável -> parâmetros numéricos do motor
+  const np = s.np, p = {};
+  for (const k in GR) p[k] = valorOp(GR[k], s.sel[k], np);
+  Object.assign(p, s.num);
+  if (s.dps.entrada === "sem") p.peb = 1;
+  else p.peb = s.dps.np === "acoplado" ? TAB.np[np].peb : valorOp("dps", s.dps.np);
+  p.linhas = {};
+  for (const L of ["E","T"]) {
+    const sl = s.linhas[L], l = {existe: sl.existe};
+    for (const k of ["pspd","ci","ct","ce","pld","ks3","uw","cdj"]) l[k] = valorOp(GRL[k], sl.sel[k]);
+    if (sl.sel.linha.startsWith("custom:")) { const [a,b] = sl.sel.linha.slice(7).split("|").map(Number); l.cld = a; l.cli = b; }
+    else { const o = opt("linha_cld", sl.sel.linha); l.cld = o.cld; l.cli = o.cli; }
+    Object.assign(l, sl.num);
+    l.pli = sl.pli === "auto" ? (TAB.pli_por_uw[L][String(l.uw)] ?? 1) : parseFloat(sl.pli.slice(7));
+    p.linhas[L] = l;
+  }
+  return p;
+}
+
+/* ---------- motor (espelho de scripts/risco.py) ---------- */
+function calcular(p) {
+  const ng = p.ng, Nd = ng * p.ad * p.cd * 1e-6, Nm = ng * p.am * 1e-6;
+  const ocup = (p.nz / p.nt) * (p.tz / 8760);
+  const La = p.rt * p.lt * ocup * p.rs;
+  const Lb = p.rp * p.rf * p.hz * p.lf * ocup * p.rs;
+  const Lb3 = p.rp * p.rf * p.lf3 * (p.ct_valor ? p.cz / p.ct_valor : 0);
+  const Pb = p.pb, Peb = p.peb, Pa = p.pta * Pb;
+  const at = [];
+  for (const L of ["E","T"]) {
+    const l = p.linhas[L]; if (!l.existe) continue;
+    const Nl = ng * 40 * l.ll * l.ci * l.ce * l.ct * 1e-6;
+    const Ni = ng * 4000 * l.ll * l.ci * l.ce * l.ct * 1e-6;
+    const Ndj = ng * (l.adj || 0) * l.cdj * l.ct * 1e-6;
+    const ks4 = Math.min(1, 1 / l.uw), pms = (l.ks1 * l.ks2 * l.ks3 * ks4) ** 2;
+    at.push({L, Nl, Ni, Ndj, pms, pu: p.ptu * Peb * l.pld * l.cld, pv: Peb * l.pld * l.cld,
+      pc: l.pspd * l.cld, pm: l.pspd * pms, pw: l.pspd * l.pld * l.cld, pz: l.pspd * l.pli * l.cli});
+  }
+  const comb = k => at.length ? 1 - at.reduce((a, v) => a * (1 - v[k]), 1) : 0;
+  const sum = f => at.reduce((a, v) => a + f(v), 0);
+  const c = {};
+  c.Ra = Nd * Pa * La; c.Rb = Nd * Pb * Lb;
+  c.Ru = sum(v => (v.Nl + v.Ndj) * v.pu * La); c.Rv = sum(v => (v.Nl + v.Ndj) * v.pv * Lb);
+  c.Rb3 = Nd * Pb * Lb3; c.Rv3 = sum(v => (v.Nl + v.Ndj) * v.pv * Lb3);
+  c.Fb = Nd * Pb; c.Fc = Nd * comb("pc"); c.Fm = Nm * comb("pm");
+  c.Fv = sum(v => (v.Nl + v.Ndj) * Peb); c.Fw = sum(v => (v.Nl + v.Ndj) * v.pw); c.Fz = sum(v => v.Ni * v.pz);
+  const R1 = c.Ra + c.Rb + c.Ru + c.Rv, R3 = c.Rb3 + c.Rv3;
+  const F = c.Fb + c.Fc + c.Fm + c.Fv + c.Fw + c.Fz;
+  return {Nd, Nm, La, Lb, c, R1, R3, F, Ft: p.ft, ok1: R1 <= RT1, ok3: R3 <= RT3, okF: F <= p.ft, linhas: at};
+}
+// R3 só se aplica com patrimônio cultural (c_z > 0); sem ele é sempre 0 e só polui a tela
+const usaR3 = () => cenarios.some(c => paraParams(c.s).cz > 0);
+
+/* ---------- estado global ---------- */
+let cenarios = [];   // {id, nome, origem, arquivo, data, base, s, builder}
+let atual = 0;
+const memo = {resp: PROJ.autor || "", crea: PROJ.crea || "", art: "", adotado: null, incluir: null, obs: "", local: [PROJ.municipio, PROJ.uf].filter(Boolean).join(" / ")};
+let uid = 1;
+function novoId() { return "c" + (uid++) + "-" + Date.now().toString(36); }
+
+function carregarIniciais() {
+  cenarios = (D.cenarios || []).map(c => ({id: novoId(), nome: c.nome, origem: c.origem || "builder", arquivo: c.arquivo, data: c.data,
+    hora: c.hora, autor: c.autor, dim: c.dimensoes, nota: c.nota, baseNome: c.base, s: deParams(c), builder: c.origem === "simulado" ? undefined : c.builder}));
+  for (const c of cenarios) if (c.baseNome) c.base = (cenarios.find(x => x.nome === c.baseNome) || {}).id;
+  if (D.adotado) memo.adotado = (cenarios.find(x => x.nome === D.adotado) || {}).id || null;
+}
+function salvarLocal() {
+  try {
+    const sim = cenarios.filter(c => c.origem !== "builder");
+    localStorage.setItem(LS_KEY, JSON.stringify({sim, memo}));
+  } catch (e) { /* armazenamento indisponível: segue em memória */ }
+}
+function lerLocal() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return;
+    const o = JSON.parse(raw);
+    (o.sim || []).forEach(c => cenarios.push(c));
+    Object.assign(memo, o.memo || {});
+  } catch (e) { /* ignora */ }
+}
+
+/* ---------- verificações (espelho de comparar_cenarios.py) ---------- */
+function classeDps(peca) {
+  if (peca === null || peca === undefined) return ["n/d", "sem campo de DPS no Builder (conferir ficha/projeto)"];
+  if (!peca || /^(nenhuma|nenhum)$/i.test(peca.trim())) return [null, "sem DPS"];
+  const s = peca.toLowerCase().replace(",", ".");
+  if (/classe\s*i\b(?!i)|tipo\s*1|\bt1\b|iimp|i_imp|10\/350/.test(s)) return ["I", "classe I (pela descrição)"];
+  if (/classe\s*iii|tipo\s*3|\bt3\b/.test(s)) return ["III", "classe III (pela descrição)"];
+  if (/classe\s*ii|tipo\s*2|\bt2\b|8\/20|imax/.test(s)) return ["II", "classe II (pela descrição)"];
+  const m = s.match(/(\d+(?:\.\d+)?)\s*ka/);
+  if (m) return ["II?", m[1].replace(".", ",") + " kA sem indicação de I_imp → provável I_max (classe II), a confirmar"];
+  return ["?", "classe não identificada na descrição"];
+}
+function checarIimp(q, peb) {          // espelho de checar_iimp (comparar_cenarios.py)
+  const f = q.ficha || {}, n = q.dps_qtd || 4, npKa = ({0.05: 100, 0.02: 150, 0.01: 200})[Math.round(peb * 1000) / 1000] || (peb < 0.01 ? 200 : null);
+  const req = npKa ? 0.5 * npKa / n : null;
+  if (!q.ficha) return [["info", `DPS classe I na entrada: ${q.nome} (${q.dps_peca}). Confirme na ficha que a corrente indicada é I_imp (10/350 µs)${req ? ` e ≥ ${fmt(req)} kA por polo.` : "."}`]];
+  if (f.iimp_ka === null || f.iimp_ka === undefined) return [["alerta", `${q.nome}: a ficha não informa I_imp (10/350 µs); os ${fmt(f.imax_ka)} kA são I_max (8/20 µs), ensaio de classe II. Sem I_imp o DPS não comprova a função de classe I exigida pelo P_EB = ${fmt(peb)}${req ? ` (referência: I_imp ≥ ${fmt(req)} kA por polo; no 3+1, o N-PE ≥ ${fmt(req * n)} kA).` : "."}`]];
+  if (req && f.iimp_ka < req) return [["alerta", `${q.nome}: I_imp = ${fmt(f.iimp_ka)} kA por polo, abaixo da referência de ${fmt(req)} kA para P_EB = ${fmt(peb)}.`]];
+  return [["info", `${q.nome}: I_imp = ${fmt(f.iimp_ka)} kA por polo, atende à referência de ${fmt(req)} kA.${n === 4 && q.protege_neutro ? ` No 3+1, confirme que o DPS N-PE suporta I_imp ≥ ${fmt(req * n)} kA.` : ""}`]];
+}
+function checarPecas(Q) {            // espelho de checar_pecas (comparar_cenarios.py)
+  const out = [], num = (rx, s) => { const m = String(s || "").replace(/,/g, ".").match(rx); return m ? parseFloat(m[1]) : null; };
+  for (const q of Q) {
+    const dp = q.desconexao_peca, ka = num(/(\d+(?:\.\d+)?)\s*kA/i, dp), icc = q.icc_presumida_ka;
+    if (dp && ka !== null && icc && ka < icc) out.push(["alerta", `${q.nome}: dispositivo de desconexão do DPS (${dp}) com capacidade de interrupção ${fmt(ka)} kA abaixo da Icc presumida no quadro (${fmt(icc)} kA).`]);
+    if (dp && /\/\s*127\s*V/i.test(dp)) out.push(["alerta", `${q.nome}: dispositivo de desconexão (${dp}) para 127 V por polo em sistema 380/220 V — o DPS fica entre fase e neutro/terra a 220 V.`]);
+    const voc = q.voc_v;
+    if (voc) {
+      const ucpv = num(/(\d+(?:\.\d+)?)\s*Vcc/i, q.dps_peca);
+      if (ucpv !== null && ucpv < 1.2 * voc) out.push(["alerta", `${q.nome}: DPS CC de ${fmt(ucpv)} Vcc para arranjo com V_oc = ${fmt(voc)} V (STC). Em baixa temperatura a V_oc sobe; a tensão do DPS deve cobrir a V_oc máxima do arranjo (estimativa ≈ ${fmt(1.2 * voc)} V) — use peça de 600 Vcc ou mais, conforme NBR 16690.`]);
+      const ud = num(/(\d+(?:\.\d+)?)\s*Vcc/i, dp);
+      if (ud !== null && ud < voc) out.push(["alerta", `${q.nome}: desconexão do DPS CC (${dp}) com tensão nominal abaixo da V_oc do arranjo (${fmt(voc)} V). Use a proteção indicada pelo fabricante do DPS (ex.: fusível gPV para a tensão do sistema).`]);
+    }
+  }
+  return out;
+}
+function verificarDps(p) {          // espelho de coerencia_dps (comparar_cenarios.py)
+  const el = CTX.eletrico, out = [], add = (n, m) => out.push([n, m]);
+  if (!el) { add("info", "Projeto elétrico não lido: DPS dos quadros não conferidos."); return out; }
+  const Q = el.quadros || [], cl = q => classeDps(q.dps_peca), tem = q => ![null, "n/d"].includes(cl(q)[0]);
+  const lin = q => q.linha || "energia", E = p.linhas.E, T = p.linhas.T;
+  const spdE = E.existe ? E.pspd : 1, spdT = T.existe ? T.pspd : 1;
+  const ent = Q.filter(q => lin(q) === "energia" && q.papel === "entrada");
+  if (p.peb < 1 || spdE < 1) {
+    const c1 = ent.find(q => cl(q)[0] === "I");
+    if (!c1) add("alerta", `O cenário assume DPS classe I na entrada de energia (P_EB = ${fmt(p.peb)}), mas nenhum quadro de entrada tem classe I (${ent.map(q => q.nome + ": " + cl(q)[1]).join("; ") || "nenhum quadro de entrada identificado"}).`);
+    else out.push(...checarIimp(c1, p.peb));
+  }
+  if (spdE < 1) {
+    const sem = Q.filter(q => lin(q) === "energia" && q.papel === "distribuicao" && !tem(q)).map(q => q.nome);
+    if (sem.length) add("alerta", `P_SPD energia = ${fmt(spdE)} pressupõe DPS coordenados em todos os quadros de distribuição; sem DPS: ${sem.join(", ")}.`);
+    const sens = Q.filter(q => q.sensivel && !tem(q)).map(q => q.nome);
+    if (sens.length) add("alerta", `Equipamento sensível sem DPS: ${sens.join(", ")}.`);
+    const uws = [E, T].filter(l => l.existe).map(l => l.uw), ups = Q.map(q => (q.ficha || {}).up_kv).filter(Boolean);
+    const dec3 = ((CTX.decisoes || {}).classe_iii) || {};
+    if (uws.length && ups.length && Math.max(...ups) >= Math.min(...uws) && dec3.prevista === false) add("alerta", `Sem DPS classe III (decisão do projetista), o U_p de ${fmt(Math.max(...ups))} kV dos DPS (mais a queda nos cabos) não protege equipamentos com a U_W = ${fmt(Math.min(...uws))} kV adotada na análise, e o P_SPD do cenário fica sem sustentação. Para manter a análise coerente, adote a U_W real dos equipamentos (≥ 2,5 kV, categoria II) e gere o memorial no Builder.`);
+    else if (uws.length && ups.length && Math.max(...ups) >= Math.min(...uws)) add("alerta", `U_p dos DPS pela ficha: até ${fmt(Math.max(...ups))} kV (mais a queda nos cabos de ligação), acima da U_W = ${fmt(Math.min(...uws))} kV adotada na análise. Os DPS dos quadros não protegem equipamentos com essa suportabilidade: preveja DPS classe III junto aos equipamentos sensíveis ou justifique uma U_W maior para os equipamentos instalados.`);
+    else if (uws.length && Math.min(...uws) <= 1.5) add("info", `A análise usa U_W = ${fmt(Math.min(...uws))} kV. DPS classe II de 275 V costumam ter U_p acima disso: preveja DPS classe III junto aos equipamentos sensíveis ou confirme o U_p nas fichas (U_p precisa ficar abaixo de U_W).`);
+    const sp = Q.filter(q => cl(q)[0] === "II?" && q.papel !== "fv").map(q => q.nome);
+    if (dec3.sugestao) add("info", "Sugestão registrada no memorial: " + (dec3.texto || "DPS classe III junto aos equipamentos sensíveis em caso de falha por surto."));
+    if (sp.length) add("info", `Classe do DPS não indicada na peça de ${sp.join(", ")} (provável classe II): confirmar na ficha técnica.`);
+  }
+  if (T.existe && (p.peb < 1 || spdT < 1) && (el.telecom || {}).aceito)
+    add("info", "Linha de telecomunicações aceita como existente sem entrada modelada no Builder: o memorial deve especificar DPS de sinal na entrada da linha e junto aos equipamentos ativos (IEC 61643-21).");
+  else if (T.existe && (p.peb < 1 || spdT < 1) && !Q.some(q => lin(q) === "telecom" && q.papel === "entrada"))
+    add("alerta", "A análise considera linha de telecomunicações entrando na estrutura (com DPS), mas o projeto não tem entrada telefônica/operadora modelada e os racks não têm campo de DPS no Builder: especifique DPS de sinal na entrada da linha e junto aos equipamentos ativos.");
+  const fv = Q.filter(q => q.papel === "fv");
+  if (fv.length && p.pb < 1) {
+    const semfv = fv.filter(q => cl(q)[0] === null).map(q => q.nome);
+    if (semfv.length) add("alerta", `Sistema fotovoltaico na estrutura com SPDA sem DPS em ${semfv.join(", ")}: prever DPS CC na caixa de junção/entrada do inversor (NBR 16690 e NBR 5419-4) e conferir os DPS CA na saída do inversor.`);
+  }
+  const neu = Q.filter(q => tem(q) && q.protege_neutro === false).map(q => q.nome);
+  if (neu.length) add("info", `Neutro sem DPS em ${neu.join(", ")}. Confirme o esquema de aterramento: em TT, ou em TN-S a jusante da separação do PEN, use configuração 3+1 (DPS N-PE).`);
+  out.push(...checarPecas(Q));
+  const dsc = Q.filter(q => tem(q) && q.desconexao === false).map(q => q.nome);
+  if (dsc.length) add("info", `DPS sem dispositivo de desconexão/proteção de retaguarda em ${dsc.join(", ")}: conferir exigência do fabricante.`);
+  if (el.nao_lidos && el.nao_lidos.length) add("info", "Quadros não lidos: " + el.nao_lidos.join(", ") + ".");
+  return out;
+}
+function verificar(c) {
+  const s = c.s, p = paraParams(s), np = s.np, out = [];
+  const cat = (PROJ.categoria || "").toLowerCase();
+  const add = (n, m) => out.push([n, m]);
+  if (p.nz > p.nt) add("erro", "nz maior que nt (pessoas na zona acima do total da estrutura).");
+  if (p.tz > 8760) add("erro", "tz acima de 8760 h/ano.");
+  if (s.explosao === "sim") add("alerta", "Estrutura marcada com risco de explosão/hospital: o Builder soma Rc, Rm, Rw e Rz ao R1, e este simulador não calcula esses componentes. Use o memorial do Builder para o R1.");
+  const rfO = opt("rf", s.sel.rf), lfO = opt("lf", s.sel.lf);
+  if (s.explosao !== "sim" && ((rfO && rfO.explosao) || (lfO && lfO.explosao)))
+    add("alerta", "rf ou Lf de risco de explosão com a estrutura marcada como sem risco de explosão. Esses dois fatores inflam Rb e Rv — confirme a classificação.");
+  if (p.lf >= 0.1 && /loja|varejo|comerc|escrit|indust|galp/.test(cat))
+    add("alerta", `Lf = ${fmt(p.lf)} para categoria "${PROJ.categoria}". Para estruturas comerciais/industriais a tabela dá 0,02.`);
+  if (p.rp === 1) add("info", "rp = 1 (nenhuma providência contra incêndio). Com PPCI (extintores, hidrantes, alarme, sprinklers) rp cai para 0,5 ou 0,2.");
+  if (p.ft === 0.1) add("info", "Ft = 0,1 (sistema crítico). Para equipamentos não críticos Ft = 1/ano — confirme com o cliente.");
+  if (s.sel.pb !== "spda" && s.sel.pb !== "sem_spda" && Math.abs(p.pb - TAB.np[np].pb) > 1e-12)
+    add("info", `P_B = ${fmt(p.pb)} não é o valor da classe ${np} (${fmt(TAB.np[np].pb)}): vem da opção "${opt("pb", s.sel.pb)?.rotulo || "personalizada"}". Confirme que a estrutura atende essa condição.`);
+  if (p.pta === 0) add("info", "P_TA = 0 (restrições físicas fixas): Ra é zerado. Confirme a condição em campo.");
+  const nr = motivosNaoReproduz(c);
+  if (nr.length) add("alerta", `${nr.join(", ")} com NP diferente do NP ${np} do SPDA. No Builder 2026 os campos de DPS só têm "com/sem" e usam o NP do SPDA: este cenário não pode ser reproduzido no Builder sem mudar o NP do projeto.`);
+  if (p.pb < 1 && p.peb >= 1) add("alerta", "Estrutura com SPDA e sem DPS na entrada das linhas (P_EB = 1). A equipotencialização para descargas atmosféricas exige DPS classe I nas linhas que entram na estrutura.");
+  const spd = ["E","T"].filter(L => p.linhas[L].existe).map(L => p.linhas[L].pspd);
+  if (spd.some(v => v < 1) && p.peb >= 1) add("alerta", "Há DPS coordenados (P_SPD < 1) sem DPS de entrada (P_EB = 1): a coordenação começa no DPS classe I da entrada.");
+  for (const [L, nm] of [["E","energia"],["T","telecomunicações"]])
+    if (p.linhas[L].existe && p.linhas[L].ll === 1000) add("info", `Linha de ${nm} com Ll = 1000 m (padrão quando o comprimento é desconhecido).`);
+  out.push(...verificarDps(p));
+  return out;
+}
+function motivosNaoReproduz(c) {
+  if (PUB) return [];
+  const s = c.s, ref = TAB.np[s.np].peb, out = [];
+  if (s.dps.entrada === "com" && s.dps.np !== "acoplado" && Math.abs(valorOp("dps", s.dps.np) - ref) > 1e-12) out.push("P_EB");
+  for (const L of ["E","T"]) { const sl = s.linhas[L]; if (!sl.existe) continue; const v = valorOp("dps", sl.sel.pspd); if (v < 1 && Math.abs(v - ref) > 1e-12) out.push("P_SPD " + (L === "E" ? "energia" : "telecom")); }
+  return out;
+}
+function reproduzivel(c) { return motivosNaoReproduz(c).length === 0; }
+
+/* ---------- régua logarítmica ---------- */
+function regua(id, rotulo, desc, valores, tol, idxAtual, tolTxt) {
+  const nz = valores.filter(v => v > 0);
+  let lo = Math.floor(Math.log10(Math.min(tol, ...(nz.length ? nz : [tol])))) - 1;
+  let hi = Math.ceil(Math.log10(Math.max(tol, ...(nz.length ? nz : [tol])))) + 1;
+  if (hi - lo < 5) { const pad = 5 - (hi - lo); lo -= Math.ceil(pad / 2); hi += Math.floor(pad / 2); }
+  const W = 1000, X = v => v <= 0 ? 0 : ((Math.log10(v) - lo) / (hi - lo)) * W;
+  let g = `<rect x="${X(tol)}" y="14" width="${W - X(tol)}" height="22" fill="var(--zone)"/>`;
+  g += `<line x1="0" x2="${W}" y1="25" y2="25" stroke="var(--rule)" stroke-width="2"/>`;
+  for (let e = lo; e <= hi; e++) {
+    const x = X(10 ** e);
+    g += `<line x1="${x}" x2="${x}" y1="20" y2="30" stroke="var(--rule)"/>`;
+    g += `<text x="${x}" y="52" text-anchor="middle">10${String(e).split("").map(c => SUP[c]).join("")}</text>`;
+  }
+  g += `<line x1="${X(tol)}" x2="${X(tol)}" y1="8" y2="40" stroke="var(--fail)" stroke-width="2"/>`;
+  g += `<text x="${X(tol) + 4}" y="10" style="fill:var(--fail)">tolerável ${tolTxt}</text>`;
+  valores.forEach((v, i) => {
+    if (i === idxAtual) return;
+    g += `<circle cx="${X(v)}" cy="25" r="5" fill="var(--surface)" stroke="var(--muted)" stroke-width="1.5"><title>${esc(cenarios[i].nome)}: ${fmt(v)}</title></circle>`;
+  });
+  const va = valores[idxAtual];
+  g += `<circle cx="${X(va)}" cy="25" r="8" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"><title>${esc(cenarios[idxAtual].nome)}: ${fmt(va)}</title></circle>`;
+  const ok = va <= tol;
+  return `<div class="regua" id="${id}"><div class="lbl"><b>${rotulo}</b><span>${desc}</span>
+    <div class="val ${ok ? "ok" : "no"}">${fmt(va)} ${ok ? "atende" : "não atende"}</div></div>
+    <svg viewBox="0 0 ${W} 58" preserveAspectRatio="none" role="img" aria-label="${rotulo} = ${fmt(va)}; tolerável ${tolTxt}">${g}</svg></div>`;
+}
+
+/* ---------- formulário ---------- */
+const HELP = {
+  np: PUB ? "Define esfera rolante, malha e ângulo do SPDA." : "Define esfera rolante, malha e ângulo do SPDA — e, no Builder, também o NP dos DPS (P_EB e P_SPD).",
+  pb: "Gera P_B (descarga na estrutura → dano físico).",
+  dpsnp: PUB ? "Nível de proteção para o qual os DPS de entrada foram dimensionados." : "No Builder o NP destes DPS é sempre o do SPDA. Aqui você pode separar os dois.",
+  pspd: "Sistema de DPS coordenados (MPS, NBR 5419-4). Domina Fc, Fm, Fw e Fz." + (PUB ? "" : " No Builder só existe com/sem, no NP do SPDA."),
+};
+function selectHtml(key, grupo, sel, np, dis, extraOpts = "") {
+  const custom = typeof sel === "string" && sel.startsWith("custom:");
+  let h = `<select data-k="${key}" ${dis}>` + extraOpts;
+  for (const o of OP[grupo]) {
+    const v = o.por_np ? TAB.np[np][o.por_np] : (o.valor ?? (o.cld !== undefined ? `${o.cld} / ${o.cli}` : ""));
+    h += `<option value="${o.id}" ${o.id === sel ? "selected" : ""}>${esc(o.rotulo)}${o.conferir_2026 ? " *" : ""}</option>`;
+  }
+  h += `<option value="__custom" ${custom ? "selected" : ""}>Valor personalizado…</option></select>`;
+  if (custom) h += `<input class="cust" type="text" inputmode="decimal" data-kc="${key}" value="${esc(sel.slice(7))}" ${dis} aria-label="valor personalizado">`;
+  return h;
+}
+function linha(label, ctl, val, k, extraCls = "") {
+  return `<div class="row ${extraCls}" data-row="${k}"><label>${label}</label><div class="ctl">${ctl}</div><div class="v">${val}</div></div>`;
+}
+function numInput(key, v, dis, step = "any") {
+  return `<input type="number" step="${step}" data-n="${key}" value="${v}" ${dis}>`;
+}
+function renderParam() {
+  const c = cenarios[atual], s = c.s, p = paraParams(s), dis = c.origem === "builder" ? "disabled" : "";
+  const base = cenarios.find(x => x.id === c.base);
+  const pb0 = base ? paraParams(base.s) : null;
+  const ch = (k, sub) => { if (!pb0) return ""; const a = sub ? pb0.linhas[sub][k] : pb0[k], b = sub ? p.linhas[sub][k] : p[k]; return JSON.stringify(a) !== JSON.stringify(b) ? "changed" : ""; };
+  const npOpts = ["I","II","III","IV"].map(n => `<option ${n === s.np ? "selected" : ""}>${n}</option>`).join("");
+  let h = `<p class="small noprint">Rótulos iguais aos da tela "Avaliação de risco detalhada" do Builder. * valor de tabela a conferir na NBR 5419-2:2026.${base ? ` Linhas destacadas diferem do cenário de origem (${esc(base.nome)}).` : ""}</p>`;
+  h += `<fieldset><legend>Classes do SPDA e DPS</legend>`;
+  h += linha(`Nível de proteção<small>${HELP.np}</small>`, `<select data-np ${dis}>${npOpts}</select>`, `esfera ${TAB.np[s.np].esfera_m} m`, "np", pb0 && base.s.np !== s.np ? "changed" : "");
+  h += linha(`Medida de proteção, dependendo das características da estrutura, para reduzir danos físicos<small>${HELP.pb}</small>`, selectHtml("pb", "pb", s.sel.pb, s.np, dis), "P_B " + fmt(p.pb), "pb", ch("pb"));
+  h += linha("Medida de proteção, dependendo das ligações equipotenciais e do NP para o qual os DPS foram projetados",
+    `<select data-dps="entrada" ${dis}><option value="com" ${s.dps.entrada === "com" ? "selected" : ""}>Com DPS</option><option value="sem" ${s.dps.entrada === "sem" ? "selected" : ""}>Sem DPS</option></select>`, "", "dpsent", ch("peb"));
+  if (s.dps.entrada === "com") {
+    let o = `<option value="acoplado" ${s.dps.np === "acoplado" ? "selected" : ""}>Igual ao NP do SPDA ${PUB ? "" : " (como no Builder)"}</option>`;
+    o += OP.dps.filter(x => x.id !== "nenhum").map(x => `<option value="${x.id}" ${x.id === s.dps.np ? "selected" : ""}>${esc(x.rotulo)}${x.conferir_2026 ? " *" : ""}</option>`).join("");
+    h += linha(`NP dos DPS de entrada (P_EB)<small>${HELP.dpsnp}</small>`, `<select data-dps="np" ${dis}>${o}</select>`, "P_EB " + fmt(p.peb), "dpsnp", reproduzivel(c) ? "" : "flag");
+  }
+  h += `</fieldset>`;
+  h += `<div class="cols"><fieldset><legend>Características da estrutura e meio ambiente</legend>`;
+  h += linha("Estruturas com risco de explosão, hospitais ou quando a falha dos sistemas internos possam colocar em perigo a vida",
+    `<select data-ex ${dis}><option value="nao" ${s.explosao !== "sim" ? "selected" : ""}>Não</option><option value="sim" ${s.explosao === "sim" ? "selected" : ""}>Sim</option></select>`, "", "ex");
+  h += linha("Densidade de descargas atmosféricas para terra (1/km²/ano)", numInput("ng", s.num.ng, dis), "N_G", "ng", ch("ng"));
+  h += linha("Fator de localização da estrutura", selectHtml("cd", "cd", s.sel.cd, s.np, dis), "C_D " + fmt(p.cd), "cd", ch("cd"));
+  h += linha("Área de exposição equivalente A_D (m²)<small>Do memorial do Builder</small>", numInput("ad", s.num.ad, dis), "", "ad", ch("ad"));
+  h += linha("Área de exposição A_M (m²)<small>Descargas perto da estrutura</small>", numInput("am", s.num.am, dis), "", "am", ch("am"));
+  h += linha("Impacto da falha do sistema", selectHtml("ft", "ft", s.sel.ft, s.np, dis), "F_T " + fmt(p.ft), "ft", ch("ft"));
+  h += `</fieldset><fieldset><legend>Características da zona considerada</legend>`;
+  h += linha("Medida de proteção adicional para descargas na estrutura que causam choques a seres vivos", selectHtml("pta", "pta", s.sel.pta, s.np, dis), "P_TA " + fmt(p.pta), "pta", ch("pta"));
+  h += linha("Medida de proteção para descarga em linha causar choques a seres vivos", selectHtml("ptu", "ptu", s.sel.ptu, s.np, dis), "P_TU " + fmt(p.ptu), "ptu", ch("ptu"));
+  h += linha("Número de pessoas na zona considerada", numInput("nz", s.num.nz, dis, 1), "n_z", "nz", ch("nz"));
+  h += linha("Número total de pessoas na estrutura", numInput("nt", s.num.nt, dis, 1), "n_t", "nt", ch("nt"));
+  h += linha("Tempo no qual as pessoas estão presentes na zona (h/ano)", numInput("tz", s.num.tz, dis, 1), "t_z", "tz", ch("tz"));
+  h += linha("Fator de redução da perda de vida humana dependendo do tipo de solo ou piso", selectHtml("rt", "rt", s.sel.rt, s.np, dis), "r_t " + fmt(p.rt), "rt", ch("rt"));
+  h += linha("Fator de redução da perda devido a danos físicos dependendo do risco de incêndio ou explosão", selectHtml("rf", "rf", s.sel.rf, s.np, dis), "r_f " + fmt(p.rf), "rf", ch("rf"));
+  h += linha("Fator de redução da perda devido a danos físicos para reduzir consequências de incêndio", selectHtml("rp", "rp", s.sel.rp, s.np, dis), "r_p " + fmt(p.rp), "rp", ch("rp"));
+  h += linha("Fator de aumento da perda devido a danos físicos na presença de um perigo especial", selectHtml("hz", "hz", s.sel.hz, s.np, dis), "h_z " + fmt(p.hz), "hz", ch("hz"));
+  h += linha("Fator de aumento devido ao tipo de construção", selectHtml("rs", "rs", s.sel.rs, s.np, dis), "r_s " + fmt(p.rs), "rs", ch("rs"));
+  h += linha("Tipo da estrutura considerando danos físicos devido a um evento perigoso", selectHtml("lf", "lf", s.sel.lf, s.np, dis), "L_F " + fmt(p.lf), "lf", ch("lf"));
+  h += linha("Valor do patrimônio cultural na zona (R$)", numInput("cz", s.num.cz, dis), "c_z", "cz", ch("cz"));
+  h += linha("Valor total da edificação e conteúdo da estrutura (R$)", numInput("ct_valor", s.num.ct_valor, dis), "c_t", "ct_valor", ch("ct_valor"));
+  h += `</fieldset></div><div class="cols">`;
+  for (const [L, nm] of [["E", "Linhas de energia"], ["T", "Linhas de telecomunicações"]]) {
+    const sl = s.linhas[L], pl = p.linhas[L], d = `data-l="${L}" ${dis}`;
+    const sl2 = (k, g) => selectHtml(L + "." + k, g, sl.sel[k], s.np, dis);
+    h += `<fieldset><legend>${nm}</legend>`;
+    h += linha("Linha existe", `<select data-l="${L}" data-k2="existe" ${dis}><option value="1" ${sl.existe ? "selected" : ""}>Sim</option><option value="0" ${sl.existe ? "" : "selected"}>Não</option></select>`, "", L + "ex");
+    if (sl.existe) {
+      h += linha(`Medida de proteção para um sistema coordenado de DPS, em função do NP para o qual os DPS foram projetados<small>${HELP.pspd}</small>`, sl2("pspd", "dps"), "P_SPD " + fmt(pl.pspd), L + "pspd", (ch("pspd", L) + (!PUB && pl.pspd < 1 && Math.abs(pl.pspd - TAB.np[s.np].peb) > 1e-12 ? " flag" : "")).trim());
+      h += linha("Comprimento da seção de linha (m)", `<input type="number" step="any" data-n="${L}.ll" value="${sl.num.ll}" ${dis}>`, "L_L", L + "ll", ch("ll", L));
+      h += linha("Tensão suportável de impulso a ser protegido (kV)", sl2("uw", "uw"), "K_S4 " + fmt(Math.min(1, 1 / pl.uw)), L + "uw", ch("uw", L));
+      h += linha("Fator de instalação da linha", sl2("ci", "ci"), "C_I " + fmt(pl.ci), L + "ci", ch("ci", L));
+      h += linha("Fator do tipo de linha", sl2("ct", "ct"), "C_T " + fmt(pl.ct), L + "ct", ch("ct", L));
+      h += linha("Fator ambiental da linha", sl2("ce", "ce"), "C_E " + fmt(pl.ce), L + "ce", ch("ce", L));
+      h += linha("Fator de tipo de linha e conexão, dependendo das condições de blindagem, aterramento e isolamento", sl2("linha", "linha_cld"), `C_LD ${fmt(pl.cld)} · C_LI ${fmt(pl.cli)}`, L + "linha", ch("cld", L) || ch("cli", L));
+      h += linha("Fator de tipo de linha, dependendo das condições do roteamento, blindagem e interligação", sl2("pld", "pld"), "P_LD " + fmt(pl.pld), L + "pld", ch("pld", L));
+      h += linha("Fator de tipo de fiação, dependendo da fiação interna", sl2("ks3", "ks3"), "K_S3 " + fmt(pl.ks3), L + "ks3", ch("ks3", L));
+      h += linha("K_S1 · K_S2 (blindagem espacial)<small>1 = sem blindagem por malha</small>", `<input type="number" step="any" data-n="${L}.ks1" value="${sl.num.ks1}" ${dis} aria-label="Ks1"><input type="number" step="any" data-n="${L}.ks2" value="${sl.num.ks2}" ${dis} aria-label="Ks2">`, "", L + "ks12", ch("ks1", L) || ch("ks2", L));
+      h += linha("Estrutura adjacente — A_DJ (m²)<small>0 = sem estrutura adjacente</small>", `<input type="number" step="any" data-n="${L}.adj" value="${sl.num.adj}" ${dis}>`, "", L + "adj", ch("adj", L));
+      h += linha("Fator de localização da estrutura adjacente", sl2("cdj", "cd"), "C_DJ " + fmt(pl.cdj), L + "cdj", ch("cdj", L));
+      h += linha("P_LI (pela tensão suportável)", `<select data-l="${L}" data-k2="pli" ${dis}><option value="auto" ${sl.pli === "auto" ? "selected" : ""}>Pela tabela (U_W)</option><option value="__custom" ${sl.pli !== "auto" ? "selected" : ""}>Valor personalizado…</option></select>${sl.pli !== "auto" ? `<input class="cust" type="text" data-plic="${L}" value="${esc(sl.pli.slice(7))}" ${dis}>` : ""}`, "P_LI " + fmt(pl.pli), L + "pli", ch("pli", L));
+    }
+    h += `</fieldset>`;
+  }
+  h += `</div>`;
+  $("#tab-param").innerHTML = h;
+}
+
+function onParamChange(e) {
+  const c = cenarios[atual]; if (c.origem === "builder") return;
+  const t = e.target, s = c.s;
+  const num = v => parseFloat(String(v).replace(",", "."));
+  if (t.dataset.np !== undefined) s.np = t.value;
+  else if (t.dataset.ex !== undefined) s.explosao = t.value;
+  else if (t.dataset.dps) s.dps[t.dataset.dps] = t.value;
+  else if (t.dataset.k2 === "existe") s.linhas[t.dataset.l].existe = t.value === "1";
+  else if (t.dataset.k2 === "pli") s.linhas[t.dataset.l].pli = t.value === "auto" ? "auto" : "custom:" + paraParams(s).linhas[t.dataset.l].pli;
+  else if (t.dataset.plic) { const v = num(t.value); if (!isNaN(v)) s.linhas[t.dataset.plic].pli = "custom:" + v; }
+  else if (t.dataset.k || t.dataset.kc) {
+    const key = t.dataset.k || t.dataset.kc, [a, b] = key.split(".");
+    const tgt = b ? s.linhas[a].sel : s.sel, k = b || a;
+    if (t.dataset.kc) { const v = k === "linha" ? t.value.replace(/\s/g, "").replace("/", "|") : num(t.value); if (k === "linha" || !isNaN(v)) tgt[k] = "custom:" + v; }
+    else if (t.value === "__custom") {
+      const atualV = b ? paraParams(s).linhas[a][k === "linha" ? "cld" : k] : paraParams(s)[k];
+      tgt[k] = k === "linha" ? "custom:" + paraParams(s).linhas[a].cld + "|" + paraParams(s).linhas[a].cli : "custom:" + atualV;
+    } else tgt[k] = t.value;
+  } else if (t.dataset.n) {
+    const [a, b] = t.dataset.n.split("."), v = num(t.value);
+    if (isNaN(v)) return;
+    if (b) s.linhas[a].num[b] = v; else s.num[a] = v;
+  } else return;
+  const foco = t.dataset.n || t.dataset.kc || t.dataset.plic ? (t.dataset.n || t.dataset.kc || t.dataset.plic) : null;
+  salvarLocal();
+  renderTudo(foco ? {foco} : {});
+}
+
+/* ---------- composição ---------- */
+const DICA = {
+  Ra: "Choque por tensões de toque e passo (descarga na estrutura). Reduz com P_TA.",
+  Rb: "Dano físico por descarga na estrutura. Reduz com P_B (SPDA), r_p, r_f.",
+  Ru: "Choque por descarga na linha. Reduz com P_TU e P_EB.",
+  Rv: "Dano físico por descarga na linha (centelhamento na entrada). Reduz com P_EB (DPS de entrada), r_p, r_f, L_F.",
+  Fb: "Descarga na estrutura. Reduz com P_B.",
+  Fc: "Falha de sistemas internos por descarga na estrutura. Reduz com P_SPD.",
+  Fm: "Falha por descarga perto da estrutura (campo induzido). Reduz com P_SPD e K_S1…K_S4.",
+  Fv: "Descarga direta na linha. Reduz com P_EB.",
+  Fw: "Descarga direta na linha, surto conduzido. Reduz com P_SPD, P_LD, C_LD.",
+  Fz: "Descarga perto da linha, surto induzido. Reduz com P_SPD, P_LI, C_LI.",
+};
+function blocoComp(titulo, r, keys, tot) {
+  const max = Math.max(...keys.map(k => r.c[k]), 0);
+  let h = `<div class="panel"><h3>${titulo} = ${fmt(tot)}</h3><div class="comp">`;
+  for (const k of keys) {
+    const v = r.c[k], pct = tot > 0 ? v / tot * 100 : 0;
+    h += `<b>${k.replace(/(\d)$/, "")}</b><div class="bar" title="${pct.toFixed(1)} %"><i class="${v === max && v > 0 ? "dom" : ""}" style="width:${pct}%"></i></div><span class="n">${fmt(v)} · ${pct.toFixed(pct < 1 && pct > 0 ? 1 : 0)} %</span><div class="hint">${DICA[k.replace(/3$/, "")]}</div>`;
+  }
+  return h + `</div></div>`;
+}
+function renderComp() {
+  const c = cenarios[atual], r = calcular(paraParams(c.s));
+  let h = blocoComp("R1 — perda de vida humana", r, ["Ra","Rb","Ru","Rv"], r.R1);
+  h += blocoComp("F — frequência de danos", r, ["Fb","Fc","Fm","Fv","Fw","Fz"], r.F);
+  if (r.R3 > 0) h += blocoComp("R3 — patrimônio cultural", r, ["Rb3","Rv3"], r.R3);
+  h += `<p class="small">N_D = ${fmt(r.Nd)}/ano · N_M = ${fmt(r.Nm)}/ano · L_A = ${fmt(r.La)} · L_B = ${fmt(r.Lb)}</p>`;
+  $("#tab-comp").innerHTML = h;
+}
+
+/* ---------- comparativo ---------- */
+function plano(c) {
+  const p = paraParams(c.s), o = {"NP do SPDA": c.s.np, "Risco de explosão": c.s.explosao === "sim" ? "Sim" : "Não"};
+  const rot = {ng:"N_G",ad:"A_D (m²)",am:"A_M (m²)",cd:"C_D",pb:"P_B",pta:"P_TA",ptu:"P_TU",peb:"P_EB (DPS de entrada)",rt:"r_t",rf:"r_f",rp:"r_p",hz:"h_z",rs:"r_s",lf:"L_F",lt:"L_T",lf3:"L_F (R3)",nz:"n_z",nt:"n_t",tz:"t_z",cz:"c_z",ct_valor:"c_t",ft:"F_T"};
+  for (const k in rot) o[rot[k]] = p[k];
+  const rl = {existe:"existe",pspd:"P_SPD",ll:"L_L (m)",uw:"U_W (kV)",ci:"C_I",ct:"C_T",ce:"C_E",cld:"C_LD",cli:"C_LI",pld:"P_LD",pli:"P_LI",ks1:"K_S1",ks2:"K_S2",ks3:"K_S3",adj:"A_DJ",cdj:"C_DJ"};
+  for (const [L, nm] of [["E","energia"],["T","telecom"]]) for (const k in rl) o[`${rl[k]} — ${nm}`] = p.linhas[L][k];
+  return o;
+}
+const fv = v => typeof v === "boolean" ? (v ? "sim" : "não") : (typeof v === "number" ? fmt(v) : esc(v));
+let cmpTodos = false;
+function renderCmp() {
+  const pl = cenarios.map(plano), rs = cenarios.map(c => calcular(paraParams(c.s)));
+  const keys = Object.keys(pl[0]);
+  const dif = keys.filter(k => new Set(pl.map(x => JSON.stringify(x[k]))).size > 1);
+  const mostrar = cmpTodos ? keys : dif;
+  const st = (ok) => ok ? "ok" : "no";
+  let h = `<div class="btnrow noprint" style="margin-bottom:.6rem"><label class="small"><input type="checkbox" id="cmp-todos" ${cmpTodos ? "checked" : ""}> Mostrar todos os parâmetros (${keys.length})</label></div>`;
+  h += `<div class="tbl-wrap"><table><thead><tr><th>Item</th>${cenarios.map((c, i) => `<th class="n ${i === atual ? "cur" : ""}">${esc(c.nome)}${c.origem === "builder" ? " <span class='tag builder'>Builder</span>" : ""}</th>`).join("")}</tr></thead><tbody>`;
+  h += `<tr><td><b>R1</b> (≤ ${fmt(RT1)})</td>${rs.map(r => `<td class="n ${st(r.ok1)}">${fmt(r.R1)}</td>`).join("")}</tr>`;
+  if (usaR3()) h += `<tr><td><b>R3</b> (≤ ${fmt(RT3)})</td>${rs.map(r => `<td class="n ${st(r.ok3)}">${fmt(r.R3)}</td>`).join("")}</tr>`;
+  h += `<tr><td><b>F</b> (≤ F_T)</td>${rs.map(r => `<td class="n ${st(r.okF)}">${fmt(r.F)} <span class="small">/ ${fmt(r.Ft)}</span></td>`).join("")}</tr>`;
+  if (!PUB) h += `<tr><td>Reproduzível no Builder 2026</td>${cenarios.map(c => `<td class="n">${reproduzivel(c) ? "sim" : "<span class='tag warn'>não</span>"}</td>`).join("")}</tr>`;
+  h += `<tr><th colspan="${cenarios.length + 1}">${cmpTodos ? "Parâmetros" : "Parâmetros que mudam"} ${!cmpTodos && !dif.length ? "— nenhum" : ""}</th></tr>`;
+  for (const k of mostrar) h += `<tr class="${cmpTodos && dif.includes(k) ? "diff" : ""}"><td>${esc(k)}</td>${pl.map(x => `<td class="n">${fv(x[k])}</td>`).join("")}</tr>`;
+  h += `</tbody></table></div>`;
+  const bld = cenarios.map((c, i) => [c, rs[i]]).filter(([c]) => c.origem === "builder" && c.builder);
+  if (bld.length) {
+    h += `<div class="panel"><h3>Conferência com o memorial do Builder</h3><p class="small">O simulador recalcula os cenários importados com o mesmo motor usado nos cenários simulados. Diferenças até ~0,1 % vêm do arredondamento do memorial.</p><div class="tbl-wrap" style="margin:0"><table><thead><tr><th>Cenário</th><th class="n">R1 Builder</th><th class="n">R1 simulador</th><th class="n">F Builder</th><th class="n">F simulador</th><th class="n">Maior dif.</th></tr></thead><tbody>`;
+    for (const [c, r] of bld) {
+      const d = (a, b) => b ? Math.abs(a - b) / Math.abs(b) : (Math.abs(a) < 1e-15 ? 0 : 1);
+      const m = Math.max(d(r.R1, c.builder.R1), d(r.F, c.builder.F), d(r.R3, c.builder.R3));
+      h += `<tr><td>${esc(c.nome)}</td><td class="n">${fmt(c.builder.R1)}</td><td class="n">${fmt(r.R1)}</td><td class="n">${fmt(c.builder.F)}</td><td class="n">${fmt(r.F)}</td><td class="n ${m <= 0.01 ? "ok" : "no"}">${(m * 100).toLocaleString("pt-BR", {maximumFractionDigits: 3})} %</td></tr>`;
+    }
+    h += `</tbody></table></div></div>`;
+  }
+  $("#tab-cmp").innerHTML = h;
+}
+
+/* ---------- verificações e instalação elétrica ---------- */
+function renderVer() {
+  const v = verificar(cenarios[atual]);
+  const nome = {erro: "Erro", alerta: "Atenção", info: "Conferir"};
+  $("#tab-ver").innerHTML = `<p class="small">Coerência dos dados de entrada com a categoria do empreendimento (${esc(PROJ.categoria || "não informada")}) e com os DPS lançados no projeto elétrico.</p><ul class="checks">${v.map(([n, m]) => `<li class="${n}"><b>${nome[n]}</b>${esc(m)}</li>`).join("")}</ul>`;
+  const n = v.filter(x => x[0] !== "info").length;
+  $("#nver").textContent = n ? n : ""; $("#nver").hidden = !n;
+}
+function renderEle() {
+  const el = CTX.eletrico, p = paraParams(cenarios[atual].s);
+  if (!el) { $("#tab-ele").innerHTML = `<p>O projeto elétrico não foi lido nesta sessão. Peça à skill para levantar os DPS dos quadros pelo conector Builder.</p>`; return; }
+  const papel = {entrada: "Entrada da linha", distribuicao: "Distribuição", fv: "Fotovoltaico", outro: "Outro"};
+  let h = `<div class="panel"><h3>O que o cenário "${esc(cenarios[atual].nome)}" pressupõe</h3><ul style="margin:0;padding-left:1.1rem">`;
+  h += `<li>Entrada das linhas (P_EB = ${fmt(p.peb)}): ${p.peb < 1 ? "DPS classe I para equipotencialização, dimensionados para " + (opt("dps", selDeValor("dps", p.peb))?.rotulo || "o NP indicado") : "nenhum DPS"}.</li>`;
+  for (const [L, nm] of [["E","energia"],["T","telecomunicações"]]) if (p.linhas[L].existe)
+    h += `<li>Sistema coordenado de DPS na linha de ${nm} (P_SPD = ${fmt(p.linhas[L].pspd)}): ${p.linhas[L].pspd < 1 ? opt("dps", selDeValor("dps", p.linhas[L].pspd))?.rotulo || "valor personalizado" : "não considerado"}.</li>`;
+  h += `</ul></div>`;
+  const pend = verificarDps(p).filter(x => x[0] !== "info");
+  if (pend.length) h += `<ul class="checks" style="margin-bottom:1rem">${pend.map(([n, m]) => `<li class="${n}"><b>Pendência</b>${esc(m)}</li>`).join("")}</ul>`;
+  h += `<div class="tbl-wrap"><table><thead><tr><th>Linha</th><th>Quadro</th><th>Tipo</th><th>Pav.</th><th>Alimentado por</th><th>Papel</th><th>DPS no Builder</th><th class="n">Qtd.</th><th>Neutro</th><th>Desconexão</th><th>Classe</th><th>Observação</th></tr></thead><tbody>`;
+  for (const q of el.quadros || []) {
+    const [cl, ex] = classeDps(q.dps_peca), tem = ![null, "n/d"].includes(cl);
+    const ok = q.papel === "entrada" ? cl === "I" : tem;
+    h += `<tr><td>${esc(q.linha || "energia")}</td><td><b>${esc(q.nome)}</b></td><td>${esc(q.tipo)}</td><td>${esc(q.pavimento)}</td><td>${esc(q.alimentador || "—")}</td><td>${papel[q.papel] || esc(q.papel || "")}</td><td class="${ok ? "ok" : (cl === "n/d" ? "" : "no")}">${esc(tem ? q.dps_peca : (cl === "n/d" ? "sem campo" : "nenhum"))}</td><td class="n">${tem ? q.dps_qtd || 0 : "—"}</td><td>${tem ? (q.protege_neutro ? "protegido" : "não protegido") : "—"}</td><td>${esc(q.desconexao_peca || (tem ? "nenhuma" : "—"))}</td><td>${esc(ex)}</td><td class="small">${esc(q.obs || "")}</td></tr>`;
+  }
+  h += `</tbody></table></div><p class="small">O Builder não tem campo de classe nem de I_imp para o DPS; a classe é inferida pela descrição da peça. ${el.nao_lidos?.length ? "Quadros não lidos: " + esc(el.nao_lidos.join(", ")) + "." : ""} Leitura em ${esc(el.lido_em || "—")}.</p>`;
+  $("#tab-ele").innerHTML = h;
+}
+
+/* ---------- memorial descritivo ---------- */
+function memorialBlocos() {
+  const sel = memo.incluir ? cenarios.filter(c => memo.incluir.includes(c.id)) : cenarios;
+  const ad = cenarios.find(c => c.id === memo.adotado) || cenarios[atual];
+  const rA = calcular(paraParams(ad.s)), pA = paraParams(ad.s);
+  const B = [], P = t => B.push({t: "p", text: t}), H = t => B.push({t: "h2", text: t});
+  const dim = (cenarios.find(c => c.dim) || {}).dim || {};
+  B.push({t: "h1", text: "Memorial descritivo — Gerenciamento de risco contra descargas atmosféricas"});
+  P(`ABNT NBR 5419-2:2026 · ${esc(PROJ.empreendimento || PROJ.nome || "")}`);
+  H("1. Identificação");
+  B.push({t: "table", head: ["Item", "Descrição"], rows: [
+    ["Empreendimento", PROJ.empreendimento || PROJ.nome || "—"], ["Projeto (Builder)", PROJ.nome || "—"],
+    ["Cliente", PROJ.cliente || "—"], ["Local", memo.local || "—"], ["Categoria / tipo", [PROJ.categoria, PROJ.tipo].filter(Boolean).join(" / ") || "—"],
+    ["Responsável técnico", memo.resp || "—"], ["Registro profissional", memo.crea || "—"], ["ART/RRT", memo.art || "—"],
+    ["Data", new Date().toLocaleDateString("pt-BR")]]});
+  H("2. Objetivo");
+  P(`Este memorial apresenta o gerenciamento de risco da estrutura contra descargas atmosféricas, com a avaliação do risco de perda de vida humana (R1)${usaR3() ? ", do risco de perda de patrimônio cultural (R3)" : ""} e da frequência de danos (F), e a comparação entre os cenários de proteção estudados, para fundamentar a escolha das medidas de proteção.`);
+  H("3. Referências");
+  B.push({t: "ul", items: ["ABNT NBR 5419-1:2026 — Princípios gerais", "ABNT NBR 5419-2:2026 — Análise de risco", "ABNT NBR 5419-3:2026 — Danos físicos a estruturas e perigos à vida", "ABNT NBR 5419-4:2026 — Sistemas elétricos e eletrônicos internos na estrutura",
+    ...cenarios.filter(c => c.origem === "builder").map(c => `Memorial de cálculo do SPDA gerado no ${PROJ.software || "AltoQi Builder"} — cenário "${c.nome}" (${c.data || ""} ${c.hora || ""})`)]});
+  H("4. Caracterização da estrutura");
+  B.push({t: "table", head: ["Parâmetro", "Valor"], rows: [
+    ["Dimensões (C × L × H)", dim.comprimento ? `${fmtPlain(dim.comprimento)} m × ${fmtPlain(dim.largura)} m × ${fmtPlain(dim.altura)} m` : "—"],
+    ["Área de exposição equivalente A_D", fmtPlain(pA.ad) + " m²"], ["Densidade de descargas N_G", fmtPlain(pA.ng) + " descargas/km²·ano"],
+    ["Fator de localização C_D", `${fmtPlain(pA.cd)} — ${opt("cd", ad.s.sel.cd)?.rotulo || "personalizado"}`],
+    ["Ocupação", `${fmtPlain(pA.nz)} pessoas na zona, ${fmtPlain(pA.nt)} na estrutura, ${fmtPlain(pA.tz)} h/ano`],
+    ["Linha de energia", pA.linhas.E.existe ? `${opt("ci", ad.s.linhas.E.sel.ci)?.rotulo || ""}, ${fmtPlain(pA.linhas.E.ll)} m, ${opt("linha_cld", ad.s.linhas.E.sel.linha)?.rotulo || ""}` : "inexistente"],
+    ["Linha de telecomunicações", pA.linhas.T.existe ? `${opt("ci", ad.s.linhas.T.sel.ci)?.rotulo || ""}, ${fmtPlain(pA.linhas.T.ll)} m, ${opt("linha_cld", ad.s.linhas.T.sel.linha)?.rotulo || ""}` : "inexistente"]]});
+  H("5. Metodologia");
+  P(`O risco R1 é a soma das componentes R_A, R_B, R_U e R_V${usaR3() ? "; o risco R3, de R_B e R_V;" : ","} e a frequência de danos F, de F_B, F_C, F_M, F_V, F_W e F_Z. Os valores toleráveis adotados são R_T = ${fmt(RT1)}/ano para R1${usaR3() ? `, R_T = ${fmt(RT3)}/ano para R3` : ""} e F_T = ${fmt(pA.ft)}/ano (${(opt("ft", ad.s.sel.ft)?.rotulo || "").split(" —")[0].toLowerCase()}). Foram avaliados ${sel.length} cenário(s), variando as medidas de proteção sobre a mesma estrutura.${usaR3() ? "" : " O risco R3 (perda de patrimônio cultural) não se aplica: a estrutura não abriga patrimônio cultural (c_z = 0)."}`);
+  H("6. Cenários avaliados");
+  const base = sel[0], plB = base ? plano(base) : {};
+  const rows = sel.map(c => {
+    const r = calcular(paraParams(c.s)), pl = plano(c);
+    const muda = c === base ? "Referência" : Object.keys(pl).filter(k => JSON.stringify(pl[k]) !== JSON.stringify(plB[k])).map(k => `${k}: ${typeof pl[k] === "number" ? fmtPlain(pl[k]) : pl[k]}`).join("; ") || "sem alteração";
+    return [c.nome + (c.origem === "builder" ? " (Builder)" : " (simulado)"), muda, `${fmt(r.R1)} ${r.ok1 ? "✓" : "✗"}`, ...(usaR3() ? [`${fmt(r.R3)} ${r.ok3 ? "✓" : "✗"}`] : []), `${fmt(r.F)} ${r.okF ? "✓" : "✗"}`];
+  });
+  B.push(usaR3() ? {t: "table", head: ["Cenário", "Alterações em relação à referência", "R1", "R3", "F"], rows, widths: [0.2, 0.44, 0.12, 0.12, 0.12]} : {t: "table", head: ["Cenário", "Alterações em relação à referência", "R1", "F"], rows, widths: [0.22, 0.5, 0.14, 0.14]});
+  P("✓ atende ao valor tolerável · ✗ não atende.");
+  H(`7. Cenário adotado: ${ad.nome}`);
+  B.push({t: "table", head: ["Componente", "Valor (/ano)", "Componente", "Valor (/ano)"], rows: [
+    ["R_A", fmt(rA.c.Ra), "F_B", fmt(rA.c.Fb)], ["R_B", fmt(rA.c.Rb), "F_C", fmt(rA.c.Fc)], ["R_U", fmt(rA.c.Ru), "F_M", fmt(rA.c.Fm)],
+    ["R_V", fmt(rA.c.Rv), "F_V", fmt(rA.c.Fv)], ["R1", fmt(rA.R1), "F_W", fmt(rA.c.Fw)], (usaR3() ? ["R3", fmt(rA.R3), "F_Z", fmt(rA.c.Fz)] : ["", "", "F_Z", fmt(rA.c.Fz)]), ["", "", "F", fmt(rA.F)]]});
+  const med = [`SPDA nível de proteção ${ad.s.np} (raio da esfera rolante ${TAB.np[ad.s.np].esfera_m} m); P_B = ${fmt(pA.pb)} — ${opt("pb", ad.s.sel.pb)?.rotulo || "valor personalizado"}.`,
+    pA.peb < 1 ? `DPS na entrada das linhas para equipotencialização (P_EB = ${fmt(pA.peb)} — ${ad.s.dps.np === "acoplado" ? "NP " + ad.s.np : opt("dps", ad.s.dps.np)?.rotulo}).` : "Sem DPS na entrada das linhas (P_EB = 1).",
+    ...["E","T"].filter(L => pA.linhas[L].existe).map(L => `Linha de ${L === "E" ? "energia" : "telecomunicações"}: ${pA.linhas[L].pspd < 1 ? "sistema coordenado de DPS — " + (opt("dps", ad.s.linhas[L].sel.pspd)?.rotulo || "valor personalizado") : "sem sistema coordenado de DPS"} (P_SPD = ${fmt(pA.linhas[L].pspd)}).`),
+    `Providências contra incêndio: ${opt("rp", ad.s.sel.rp)?.rotulo || "valor personalizado"} (r_p = ${fmtPlain(pA.rp)}).`,
+    `Proteção contra tensões de toque e passo: ${opt("pta", ad.s.sel.pta)?.rotulo || "valor personalizado"} (P_TA = ${fmtPlain(pA.pta)}).`];
+  B.push({t: "p", text: "Medidas de proteção consideradas:"}); B.push({t: "ul", items: med});
+  if (ad.origem !== "builder") P(reproduzivel(ad) ? "Cenário obtido no simulador: reproduzir no AltoQi Builder e anexar o memorial de cálculo correspondente." : "Atenção: este cenário usa DPS com nível de proteção diferente do SPDA, combinação permitida pela norma mas que o cálculo foi feito fora do Builder. O cálculo deste memorial foi feito fora do Builder e deve ser conferido pelo responsável técnico.");
+  H("8. Compatibilização com a instalação elétrica");
+  const el = CTX.eletrico;
+  if (el) {
+    P(`Levantamento dos DPS lançados no projeto elétrico (${el.lido_em || ""}), comparado com as medidas de proteção do cenário adotado.`);
+    B.push({t: "table", head: ["Linha", "Quadro", "Papel", "DPS lançado", "Classe"], widths: [0.1, 0.18, 0.14, 0.26, 0.32], rows: (el.quadros || []).map(q => { const [cl, ex] = classeDps(q.dps_peca); return [q.linha || "energia", q.nome, ({entrada: "entrada", distribuicao: "distribuição", fv: "fotovoltaico", outro: "outro"})[q.papel] || q.papel, ![null, "n/d"].includes(cl) ? `${q.dps_qtd}× ${q.dps_peca}` : (cl === "n/d" ? "sem campo no Builder" : "nenhum"), ex]; })});
+    if ((el.telecom || {}).aceito && pA.linhas.T.existe && (pA.peb < 1 || pA.linhas.T.pspd < 1))
+      P(`Linha de telecomunicações: ${el.telecom.obs || "considerada existente."} Especificação: DPS de sinal na entrada da linha na estrutura (junto ao distribuidor de campus/rack de entrada), ligados ao barramento de equipotencialização, e DPS de sinal junto aos equipamentos ativos, compatíveis com o tipo e a tensão do sinal (IEC 61643-21) e coordenados com o nível de proteção adotado.`);
+    const d3 = ((CTX.decisoes || {}).classe_iii) || {};
+    if (d3.sugestao) P("Recomendação: " + (d3.texto || "instalar DPS classe III junto aos equipamentos sensíveis em caso de falha por surto.") + " Equipamentos indicados: central de alarme de incêndio (QT1), rack de telecomunicações/dados e demais equipamentos eletrônicos com suportabilidade a impulso inferior ao nível de proteção dos DPS dos quadros (U_p = 1,5 kV).");
+    const pd = verificarDps(pA).filter(x => x[0] !== "info");
+    if (pd.length) { P("Adequações necessárias para que a instalação corresponda ao cenário adotado:"); B.push({t: "ul", items: pd.map(x => x[1])}); }
+  }
+  else P("O projeto elétrico não foi conferido.");
+  H("9. Verificações e pendências");
+  const ver = verificar(ad);
+  B.push({t: "ul", items: ver.length ? ver.map(([n, m]) => `${n === "info" ? "Conferir" : n === "alerta" ? "Atenção" : "Erro"}: ${m}`) : ["Nenhuma pendência."]});
+  H("10. Conclusão");
+  const ok = rA.ok1 && rA.ok3 && rA.okF;
+  P(ok ? `Com as medidas de proteção do cenário "${ad.nome}", ${usaR3() ? "os riscos R1 e R3" : "o risco R1"} e a frequência de danos F ficam abaixo dos valores toleráveis da ABNT NBR 5419-2:2026.`
+       : `No cenário "${ad.nome}" ${[!rA.ok1 && "o risco R1", !rA.ok3 && "o risco R3", !rA.okF && "a frequência de danos F"].filter(Boolean).join(", ")} ainda está acima do valor tolerável. São necessárias medidas de proteção adicionais antes de concluir o projeto.`);
+  const pend = ver.filter(([n]) => n !== "info").length;
+  if (ok && pend) P(`O resultado depende de as medidas de proteção listadas no item 7 serem efetivamente instaladas. Há ${pend} pendência(s) no item 9 que devem ser resolvidas antes da emissão final deste memorial.`);
+  if (memo.obs) { H("11. Observações"); memo.obs.split(/\n+/).forEach(P); }
+  B.push({t: "sign", text: memo.resp || "Responsável técnico", sub: [memo.crea, memo.art && "ART " + memo.art].filter(Boolean).join(" · ")});
+  return B;
+}
+function blocosHtml(B) {
+  return B.map(b => {
+    if (b.t === "h1") return `<h1>${esc(b.text)}</h1>`;
+    if (b.t === "h2") return `<h2>${esc(b.text)}</h2>`;
+    if (b.t === "p") return `<p>${esc(b.text)}</p>`;
+    if (b.t === "ul") return `<ul>${b.items.map(i => `<li>${esc(i)}</li>`).join("")}</ul>`;
+    if (b.t === "table") return `<div style="overflow-x:auto"><table><thead><tr>${b.head.map(x => `<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${b.rows.map(r => `<tr>${r.map(x => `<td>${esc(x)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    if (b.t === "sign") return `<div class="assin"><div></div>${esc(b.text)}<br><small>${esc(b.sub)}</small></div>`;
+    return "";
+  }).join("");
+}
+function renderMemForm() {
+  const opts = cenarios.map(c => `<option value="${c.id}" ${(memo.adotado || cenarios[atual].id) === c.id ? "selected" : ""}>${esc(c.nome)}</option>`).join("");
+  const inc = memo.incluir || cenarios.map(c => c.id);
+  $("#memform").innerHTML = `
+    <label>Responsável técnico<input data-m="resp" value="${esc(memo.resp)}"></label>
+    <label>Registro (CREA/CFT)<input data-m="crea" value="${esc(memo.crea)}"></label>
+    <label>ART/RRT<input data-m="art" value="${esc(memo.art)}"></label>
+    <label>Local<input data-m="local" value="${esc(memo.local)}"></label>
+    <label>Cenário adotado<select data-m="adotado">${opts}</select></label>
+    <fieldset class="wide" style="margin:0;padding:.3rem .75rem .5rem"><legend class="small">Cenários no memorial</legend>${cenarios.map(c => `<label style="display:inline-flex;flex-direction:row;gap:.3rem;margin-right:1rem"><input type="checkbox" data-inc="${c.id}" ${inc.includes(c.id) ? "checked" : ""}>${esc(c.nome)}</label>`).join("")}</fieldset>
+    <label class="wide">Observações<textarea data-m="obs" rows="3">${esc(memo.obs)}</textarea></label>`;
+}
+function renderDoc() { $("#doc").innerHTML = blocosHtml(memorialBlocos()); }
+
+/* ---------- exportação ---------- */
+let dlPromise = null;
+function dl() { if (!dlPromise) dlPromise = (window.claude && window.claude.use) ? window.claude.use("downloads").catch(() => null) : Promise.resolve(null); return dlPromise; }
+async function salvar(nome, dados) {
+  const d = await dl();
+  if (d) {
+    try { await d.save({filename: nome, data: dados}); toast("Arquivo salvo"); }
+    catch (e) { toast(e && e.code === "declined" ? "Download cancelado" : "Não foi possível salvar o arquivo aqui"); }
+    return;
+  }
+  const blob = dados instanceof Blob ? dados : new Blob([dados]);
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nome;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+function nomeArq(ext) { return ("Memorial analise de risco - " + (PROJ.nome || "projeto")).replace(/[\\/:*?"<>|]/g, "") + "." + ext; }
+const xe = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function docxXml(B) {
+  const run = (t, b) => `<w:r>${b ? "<w:rPr><w:b/></w:rPr>" : ""}<w:t xml:space="preserve">${xe(t)}</w:t></w:r>`;
+  const par = (t, style, b) => `<w:p>${style ? `<w:pPr><w:pStyle w:val="${style}"/></w:pPr>` : ""}${run(t, b)}</w:p>`;
+  const cell = (t, head, w) => `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${head ? '<w:shd w:val="clear" w:color="auto" w:fill="E9E9E9"/>' : ""}</w:tcPr><w:p><w:pPr><w:spacing w:before="20" w:after="20"/></w:pPr>${run(t, head)}</w:p></w:tc>`;
+  let body = "";
+  for (const b of B) {
+    if (b.t === "h1") body += par(b.text, "Title");
+    else if (b.t === "h2") body += par(b.text, "Heading1");
+    else if (b.t === "p") body += par(b.text);
+    else if (b.t === "ul") body += b.items.map(i => `<w:p><w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr>${run(i)}</w:p>`).join("");
+    else if (b.t === "table") {
+      const n = b.head.length, ws = (b.widths || b.head.map(() => 1 / n)).map(f => Math.floor(9360 * f));
+      body += `<w:tbl><w:tblPr><w:tblW w:w="9360" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders>${["top","left","bottom","right","insideH","insideV"].map(x => `<w:${x} w:val="single" w:sz="4" w:space="0" w:color="999999"/>`).join("")}</w:tblBorders><w:tblCellMar><w:left w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${ws.map(w => `<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>`;
+      body += `<w:tr><w:trPr><w:tblHeader/></w:trPr>${b.head.map((h, i) => cell(h, true, ws[i])).join("")}</w:tr>`;
+      body += b.rows.map(r => `<w:tr>${r.map((x, i) => cell(x, false, ws[i])).join("")}</w:tr>`).join("") + `</w:tbl>` + par("");
+    } else if (b.t === "sign") body += par("") + par("") + `<w:p><w:pPr><w:jc w:val="center"/></w:pPr>${run("______________________________________")}</w:p><w:p><w:pPr><w:jc w:val="center"/></w:pPr>${run(b.text, true)}</w:p><w:p><w:pPr><w:jc w:val="center"/></w:pPr>${run(b.sub)}</w:p>`;
+  }
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1418" w:right="1134" w:bottom="1134" w:left="1418" w:header="709" w:footer="709" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+}
+const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/><w:sz w:val="21"/><w:lang w:val="pt-BR"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="100" w:line="264" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="160"/></w:pPr><w:rPr><w:b/><w:sz w:val="32"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="280" w:after="100"/><w:outlineLvl w:val="0"/><w:pBdr><w:bottom w:val="single" w:sz="4" w:space="1" w:color="BBBBBB"/></w:pBdr></w:pPr><w:rPr><w:b/><w:sz w:val="25"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="ListParagraph"><w:name w:val="List Paragraph"/><w:basedOn w:val="Normal"/><w:pPr><w:ind w:left="720"/></w:pPr></w:style></w:styles>`;
+const NUMBERING = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="bullet"/><w:lvlText w:val="•"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num></w:numbering>`;
+async function baixarDocx() {
+  if (!window.JSZip) { toast("Biblioteca de Word não carregou; use Baixar HTML"); return; }
+  const z = new JSZip();
+  z.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/></Types>`);
+  z.file("_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
+  z.file("word/_rels/document.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/></Relationships>`);
+  z.file("word/document.xml", docxXml(memorialBlocos()));
+  z.file("word/styles.xml", STYLES);
+  z.file("word/numbering.xml", NUMBERING);
+  const blob = await z.generateAsync({type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+  await salvar(nomeArq("docx"), blob);
+}
+function baixarHtml() {
+  const css = `body{font:14px/1.55 Arial,sans-serif;color:#1a1a1a;max-width:820px;margin:2rem auto;padding:0 1.5rem}h1{font-size:1.45rem}h2{font-size:1.1rem;border-bottom:1px solid #bbb;padding-bottom:.2rem;margin-top:1.5rem}table{border-collapse:collapse;width:100%;font-size:12.5px;margin:.4rem 0 .8rem}th,td{border:1px solid #999;padding:.25rem .45rem;text-align:left;vertical-align:top}th{background:#e9e9e9}.assin{margin-top:3rem;text-align:center}.assin div{border-top:1px solid #333;width:60%;margin:0 auto .3rem}`;
+  salvar(nomeArq("html"), `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(nomeArq("").slice(0, -1))}</title><style>${css}</style></head><body>${blocosHtml(memorialBlocos())}</body></html>`);
+}
+function exportarJson() {
+  salvar(("Cenarios - " + (PROJ.nome || "projeto")).replace(/[\\/:*?"<>|]/g, "") + ".json",
+    JSON.stringify({formato: "spda-cenarios/1", projeto: PROJ.nome, exportado_em: new Date().toISOString(), cenarios}, null, 2));
+}
+function importarJson(f) {
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const o = JSON.parse(r.result);
+      if (o.formato !== "spda-cenarios/1" || !Array.isArray(o.cenarios)) throw new Error("formato");
+      let n = 0;
+      for (const c of o.cenarios) if (!cenarios.some(x => x.id === c.id)) { cenarios.push({...c, origem: c.origem === "builder" ? "importado" : c.origem}); n++; }
+      salvarLocal(); renderTudo(); toast(n + " cenário(s) importado(s)");
+    } catch (e) { toast("Arquivo não reconhecido: use um .json exportado por este simulador"); }
+  };
+  r.readAsText(f);
+}
+let tt;
+function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.add("on"); clearTimeout(tt); tt = setTimeout(() => t.classList.remove("on"), 2600); }
+
+/* ---------- render geral ---------- */
+function renderLista() {
+  $("#cenlist").innerHTML = cenarios.map((c, i) => {
+    const r = calcular(paraParams(c.s));
+    return `<li><button data-i="${i}" aria-current="${i === atual}"><span class="nm">${esc(c.nome)}</span><span class="sub">${c.origem === "builder" ? "Builder" : "simulado"} · NP ${c.s.np}
+      <span class="dot ${r.ok1 ? "ok" : ""}">R1</span>${usaR3() ? `<span class="dot ${r.ok3 ? "ok" : ""}">R3</span>` : ""}<span class="dot ${r.okF ? "ok" : ""}">F</span></span></button></li>`;
+  }).join("");
+  $("#b-del").disabled = cenarios[atual].origem === "builder";
+}
+function renderHead() {
+  const c = cenarios[atual];
+  const n = $("#nome"); n.value = c.nome; n.readOnly = c.origem === "builder";
+  $("#origem").innerHTML = c.origem === "builder" ? `<span class="tag builder">Memorial do Builder · ${esc(c.arquivo || "")}</span>` : `<span class="tag">Simulado${c.base ? " a partir de " + esc(cenarios.find(x => x.id === c.base)?.nome || "") : ""}</span>`;
+  let b = "";
+  if (c.origem === "builder") b += `<div class="banner info">Cenário lido do memorial de cálculo do Builder. Para testar alterações, use <b>Duplicar</b>.</div>`;
+  if (c.nota) b += `<div class="banner info">${esc(c.nota)}</div>`;
+  if (!reproduzivel(c)) b += `<div class="banner warn">Este cenário usa DPS (${motivosNaoReproduz(c).join(", ")}) com NP diferente do SPDA. </div>`;
+  if (c.s.explosao === "sim") b += `<div class="banner warn">Com risco de explosão, o R1 inclui R_C, R_M, R_W e R_Z, que este simulador não calcula. Use o memorial do Builder.</div>`;
+  $("#banners").innerHTML = b;
+}
+function renderReguas() {
+  const rs = cenarios.map(c => calcular(paraParams(c.s))), r = rs[atual];
+  $("#reguas").innerHTML =
+    regua("rg1", "R1", "perda de vida humana", rs.map(x => x.R1), RT1, atual, fmt(RT1)) +
+    (usaR3() ? regua("rg3", "R3", "patrimônio cultural", rs.map(x => x.R3), RT3, atual, fmt(RT3)) : "") +
+    regua("rgF", "F", "frequência de danos", rs.map(x => x.F), r.Ft, atual, fmt(r.Ft)) +
+    `<div class="legend">● cenário atual · ○ demais cenários · faixa vermelha: acima do tolerável (escala logarítmica)</div>`;
+}
+let abaAtual = "t-param";
+function renderAba() {
+  ({"t-param": renderParam, "t-comp": renderComp, "t-cmp": renderCmp, "t-ver": () => {}, "t-ele": renderEle, "t-mem": () => { renderMemForm(); renderDoc(); }})[abaAtual]();
+}
+function renderTudo(o = {}) {
+  renderLista(); renderHead(); renderReguas(); renderVer(); renderAba();
+  if (o.foco) { const el = document.querySelector(`[data-n="${o.foco}"],[data-kc="${o.foco}"],[data-plic="${o.foco}"]`); if (el) { el.focus(); try { const L = el.value.length; el.setSelectionRange && el.type === "text" && el.setSelectionRange(L, L); } catch (e) {} } }
+}
+
+/* ---------- eventos ---------- */
+$("#cenlist").addEventListener("click", e => { const b = e.target.closest("button[data-i]"); if (!b) return; atual = +b.dataset.i; renderTudo(); });
+$("#b-dup").addEventListener("click", () => {
+  const c = cenarios[atual], n = JSON.parse(JSON.stringify(c));
+  n.id = novoId(); n.origem = "simulado"; n.base = c.id; n.nome = c.nome + " — cópia"; delete n.builder;
+  cenarios.splice(atual + 1, 0, n); atual++; salvarLocal(); renderTudo(); $("#nome").select();
+});
+$("#b-del").addEventListener("click", () => {
+  const c = cenarios[atual]; if (c.origem === "builder") return;
+  cenarios.splice(atual, 1); atual = Math.max(0, atual - 1); salvarLocal(); renderTudo(); toast(`Cenário "${c.nome}" excluído`);
+});
+$("#nome").addEventListener("change", e => { const c = cenarios[atual]; if (c.origem === "builder") return; c.nome = e.target.value.trim() || c.nome; salvarLocal(); renderLista(); });
+$("#tabs").addEventListener("click", e => {
+  const b = e.target.closest("button[role=tab]"); if (!b) return;
+  document.querySelectorAll("#tabs button").forEach(x => x.setAttribute("aria-selected", x === b));
+  document.querySelectorAll("section[role=tabpanel]").forEach(s => s.hidden = s.id !== b.getAttribute("aria-controls"));
+  abaAtual = b.id; renderAba();
+});
+$("#tab-param").addEventListener("change", onParamChange);
+$("#tab-cmp").addEventListener("change", e => { if (e.target.id === "cmp-todos") { cmpTodos = e.target.checked; renderCmp(); } });
+$("#memform").addEventListener("input", e => {
+  const t = e.target;
+  if (t.dataset.m) memo[t.dataset.m] = t.value;
+  else if (t.dataset.inc) { const set = new Set(memo.incluir || cenarios.map(c => c.id)); t.checked ? set.add(t.dataset.inc) : set.delete(t.dataset.inc); memo.incluir = cenarios.map(c => c.id).filter(id => set.has(id)); }
+  salvarLocal(); renderDoc();
+});
+$("#b-print").addEventListener("click", () => { try { window.print(); } catch (e) { toast("Impressão indisponível aqui: baixe o .docx ou o HTML"); } });
+$("#b-docx").addEventListener("click", baixarDocx);
+$("#b-html").addEventListener("click", baixarHtml);
+$("#b-exp").addEventListener("click", exportarJson);
+$("#f-imp").addEventListener("change", e => { if (e.target.files[0]) importarJson(e.target.files[0]); e.target.value = ""; });
+
+/* ---------- início ---------- */
+if (PUB) { const d = $("#demo"); d.hidden = false; d.textContent = "Projeto de demonstração. Os cenários marcados como Builder vêm dos memoriais de cálculo do AltoQi Builder (NBR 5419-2:2026); use Duplicar para testar suas próprias variações, calculadas aqui no navegador."; }
+$("#tit").textContent = "Cenários de análise de risco — " + (PROJ.empreendimento || PROJ.nome || "SPDA");
+$("#meta").textContent = [PROJ.nome, [PROJ.municipio, PROJ.uf].filter(Boolean).join("/"), PROJ.categoria, "NBR 5419-2:2026"].filter(Boolean).join(", ");
+carregarIniciais(); lerLocal();
+if (!cenarios.length) { document.querySelector("main").innerHTML = "<p>Nenhum cenário carregado. Gere o simulador a partir de um memorial de cálculo do Builder.</p>"; return; }
+renderTudo();
+window.__spda = {calcular, paraParams, deParams, cenarios: () => cenarios};
+})();
+</script>
+</body>
+</html>
